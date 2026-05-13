@@ -130,21 +130,25 @@
       btn.disabled = true;
       btn.textContent = 'Sending...';
       try {
-        await fetch('https://formspree.io/f/mojpjvwb', {
+        const res = await fetch('https://formspree.io/f/mojpjvwb', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
           body: JSON.stringify({
             'Sauna Name': saunaName.value.trim(),
-            'Email': email.value.trim(),
+            email: email.value.trim(),
             'Phone': document.getElementById('phone').value.trim() || '—',
             '_subject': `New seána listing request — ${saunaName.value.trim()}`,
           }),
         });
+        if (!res.ok) throw new Error(`Formspree error ${res.status}`);
+        document.getElementById('form-view').style.display = 'none';
+        document.getElementById('success-view').style.display = 'block';
       } catch (err) {
         console.error(err);
+        btn.disabled = false;
+        btn.textContent = 'Get Listed';
+        alert('Something went wrong — please try again or email octavian.rosca7@gmail.com directly.');
       }
-      document.getElementById('form-view').style.display = 'none';
-      document.getElementById('success-view').style.display = 'block';
     }
   </script>
 
