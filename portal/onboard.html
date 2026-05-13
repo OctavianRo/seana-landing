@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>List Your Sauna — seána</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" type="image/png" href="/favicon.png" sizes="32x32">
+  <link rel="apple-touch-icon" href="/favicon.png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0F1114;
+      --border: rgba(200,120,90,0.12);
+      --border-focus: rgba(200,120,90,0.5);
+      --orange: #C8785A;
+      --text: #F0ECE6;
+      --text2: rgba(240,236,230,0.6);
+      --text3: rgba(240,236,230,0.35);
+      --radius: 14px;
+      --radius-sm: 10px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+    }
+
+    nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 24px; border-bottom: 1px solid var(--border);
+    }
+    .nav-brand {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 18px; font-weight: 800; color: var(--text);
+      text-decoration: none;
+    }
+
+    .page { max-width: 480px; margin: 0 auto; padding: 52px 24px 80px; }
+
+    h1 { font-size: 30px; font-weight: 800; color: var(--text); margin-bottom: 10px; }
+    .subtitle { font-size: 16px; color: var(--text3); line-height: 1.6; margin-bottom: 36px; }
+
+    .field { margin-bottom: 20px; }
+    .field label {
+      display: block; font-size: 12px; font-weight: 600;
+      color: var(--text2); letter-spacing: 0.4px; margin-bottom: 8px;
+    }
+    input[type=text], input[type=email], input[type=tel] {
+      width: 100%; background: #12151A; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 14px 16px;
+      color: var(--text); font-size: 16px; outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus { border-color: var(--border-focus); }
+
+    .btn {
+      width: 100%; background: var(--orange); color: #0F1114;
+      border: none; border-radius: var(--radius); padding: 16px;
+      font-size: 16px; font-weight: 800; cursor: pointer;
+      margin-top: 8px; transition: opacity 0.2s;
+    }
+    .btn:disabled { opacity: 0.4; cursor: default; }
+    .btn:not(:disabled):hover { opacity: 0.88; }
+
+    .success {
+      display: none; text-align: center; padding-top: 60px;
+    }
+    .success-icon { font-size: 48px; margin-bottom: 20px; }
+    .success h2 { font-size: 26px; font-weight: 800; margin-bottom: 12px; }
+    .success p { font-size: 16px; color: var(--text2); line-height: 1.6; }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="/" class="nav-brand">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C8785A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+      </svg>
+      seána
+    </a>
+  </nav>
+
+  <div class="page">
+
+    <div id="form-view">
+      <h1>Get listed on seána</h1>
+      <p class="subtitle">Drop your details and I'll be in touch to get your sauna live.</p>
+
+      <div class="field">
+        <label>Sauna name *</label>
+        <input type="text" id="saunaName" placeholder="Your sauna name" autocomplete="organization" />
+      </div>
+      <div class="field">
+        <label>Email address *</label>
+        <input type="email" id="email" placeholder="you@yoursauna.ie" autocomplete="email" />
+      </div>
+      <div class="field">
+        <label>Phone number</label>
+        <input type="tel" id="phone" placeholder="+353 ..." autocomplete="tel" />
+      </div>
+
+      <button class="btn" id="submit-btn" disabled onclick="handleSubmit()">Get Listed</button>
+    </div>
+
+    <div class="success" id="success-view">
+      <div class="success-icon">🔥</div>
+      <h2>You're on the list!</h2>
+      <p>Thanks for registering. I'll be in touch shortly to get your sauna live on seána.</p>
+    </div>
+
+  </div>
+
+  <script>
+    const saunaName = document.getElementById('saunaName');
+    const email = document.getElementById('email');
+    const btn = document.getElementById('submit-btn');
+
+    function checkValid() {
+      btn.disabled = !(saunaName.value.trim() && email.value.trim());
+    }
+    saunaName.addEventListener('input', checkValid);
+    email.addEventListener('input', checkValid);
+
+    async function handleSubmit() {
+      btn.disabled = true;
+      btn.textContent = 'Sending...';
+      try {
+        await fetch('https://formspree.io/f/mojpjvwb', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({
+            'Sauna Name': saunaName.value.trim(),
+            'Email': email.value.trim(),
+            'Phone': document.getElementById('phone').value.trim() || '—',
+            '_subject': `New seána listing request — ${saunaName.value.trim()}`,
+          }),
+        });
+      } catch (err) {
+        console.error(err);
+      }
+      document.getElementById('form-view').style.display = 'none';
+      document.getElementById('success-view').style.display = 'block';
+    }
+  </script>
+
+</body>
+</html>
