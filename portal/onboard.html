@@ -91,20 +91,22 @@
       <h1>Get listed on seána</h1>
       <p class="subtitle">Drop your details and I'll be in touch to get your sauna live.</p>
 
-      <div class="field">
-        <label>Sauna name *</label>
-        <input type="text" id="saunaName" placeholder="Your sauna name" autocomplete="organization" />
-      </div>
-      <div class="field">
-        <label>Email address *</label>
-        <input type="email" id="email" placeholder="you@yoursauna.ie" autocomplete="email" />
-      </div>
-      <div class="field">
-        <label>Phone number</label>
-        <input type="tel" id="phone" placeholder="+353 ..." autocomplete="tel" />
-      </div>
-
-      <button class="btn" id="submit-btn" disabled onclick="handleSubmit()">Get Listed</button>
+      <form id="listing-form" action="https://formspree.io/f/mojpjvwb" method="POST">
+        <input type="hidden" name="_subject" value="New seána listing request" />
+        <div class="field">
+          <label>Sauna name *</label>
+          <input type="text" name="Sauna Name" id="saunaName" placeholder="Your sauna name" autocomplete="organization" required />
+        </div>
+        <div class="field">
+          <label>Email address *</label>
+          <input type="email" name="email" id="email" placeholder="you@yoursauna.ie" autocomplete="email" required />
+        </div>
+        <div class="field">
+          <label>Phone number</label>
+          <input type="tel" name="Phone" id="phone" placeholder="+353 ..." autocomplete="tel" />
+        </div>
+        <button class="btn" id="submit-btn" type="submit">Get Listed</button>
+      </form>
     </div>
 
     <div class="success" id="success-view">
@@ -116,29 +118,19 @@
   </div>
 
   <script>
-    const saunaName = document.getElementById('saunaName');
-    const email = document.getElementById('email');
+    const form = document.getElementById('listing-form');
     const btn = document.getElementById('submit-btn');
 
-    function checkValid() {
-      btn.disabled = !(saunaName.value.trim() && email.value.trim());
-    }
-    saunaName.addEventListener('input', checkValid);
-    email.addEventListener('input', checkValid);
-
-    async function handleSubmit() {
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
       btn.disabled = true;
       btn.textContent = 'Sending...';
       try {
+        const data = new FormData(form);
         const res = await fetch('https://formspree.io/f/mojpjvwb', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify({
-            'Sauna Name': saunaName.value.trim(),
-            email: email.value.trim(),
-            'Phone': document.getElementById('phone').value.trim() || '—',
-            '_subject': `New seána listing request — ${saunaName.value.trim()}`,
-          }),
+          headers: { 'Accept': 'application/json' },
+          body: data,
         });
         if (!res.ok) throw new Error(`Formspree error ${res.status}`);
         document.getElementById('form-view').style.display = 'none';
@@ -149,7 +141,7 @@
         btn.textContent = 'Get Listed';
         alert('Something went wrong — please try again or email octavian.rosca7@gmail.com directly.');
       }
-    }
+    });
   </script>
 
 </body>
