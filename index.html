@@ -131,6 +131,59 @@
     .biz-cta-row {
       display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 8px;
     }
+    .biz-form {
+      max-width: 460px;
+      margin: 32px auto 0;
+      text-align: left;
+    }
+    .biz-form .form-field {
+      margin-bottom: 16px;
+    }
+    .biz-form label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      letter-spacing: 0.4px;
+      margin-bottom: 8px;
+    }
+    .biz-form input {
+      width: 100%;
+      background: var(--medium-brown);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      color: var(--text-primary);
+      font-size: 16px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .biz-form input:focus {
+      border-color: rgba(200,120,90,0.5);
+    }
+    .biz-form .form-btn {
+      width: 100%;
+      background: var(--orange);
+      color: #0F1114;
+      border: none;
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: opacity 0.2s;
+    }
+    .biz-form .form-btn:disabled { opacity: 0.4; cursor: default; }
+    .biz-form .form-btn:not(:disabled):hover { opacity: 0.88; }
+    .biz-form-success {
+      display: none;
+      text-align: center;
+      padding: 32px 0;
+    }
+    .biz-form-success .success-icon { font-size: 40px; margin-bottom: 14px; }
+    .biz-form-success h3 { font-size: 22px; font-weight: 800; margin-bottom: 10px; }
+    .biz-form-success p { font-size: 15px; color: var(--text-secondary); line-height: 1.6; }
 
     /* === Hero === */
     .hero {
@@ -641,15 +694,27 @@
       </div>
     </div>
 
-    <div class="biz-cta-row">
-      <a href="/portal/onboard.html" class="btn-primary" style="font-size:16px;padding:14px 32px;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
-        List Your Sauna
-      </a>
-      <a href="#" onclick="Calendly.initPopupWidget({url:'https://calendly.com/octavian-rosca7/30min'});return false;" class="btn-secondary" style="font-size:16px;padding:14px 32px;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        Book a Call
-      </a>
+    <div class="biz-form">
+      <div id="biz-form-fields">
+        <div class="form-field">
+          <label>Sauna name *</label>
+          <input type="text" id="biz-sauna-name" placeholder="Your sauna name" autocomplete="organization" />
+        </div>
+        <div class="form-field">
+          <label>Email address *</label>
+          <input type="email" id="biz-email" placeholder="you@yoursauna.ie" autocomplete="email" />
+        </div>
+        <div class="form-field">
+          <label>Phone number</label>
+          <input type="tel" id="biz-phone" placeholder="+353 ..." autocomplete="tel" />
+        </div>
+        <button class="form-btn" id="biz-submit-btn" disabled onclick="handleBizSubmit()">Get Listed</button>
+      </div>
+      <div class="biz-form-success" id="biz-success">
+        <div class="success-icon">🔥</div>
+        <h3>You're on the list!</h3>
+        <p>Thanks for registering. I'll be in touch shortly to get your sauna live on seána.</p>
+      </div>
     </div>
 
   </section>
@@ -782,7 +847,38 @@
       tick();
     })();
   </script>
-  <script src="https://assets.calendly.com/assets/external/widget.js" type="text/javascript" async></script>
+  <script>
+    const bizSaunaName = document.getElementById('biz-sauna-name');
+    const bizEmail = document.getElementById('biz-email');
+    const bizBtn = document.getElementById('biz-submit-btn');
+
+    function checkBizValid() {
+      bizBtn.disabled = !(bizSaunaName.value.trim() && bizEmail.value.trim());
+    }
+    bizSaunaName.addEventListener('input', checkBizValid);
+    bizEmail.addEventListener('input', checkBizValid);
+
+    async function handleBizSubmit() {
+      bizBtn.disabled = true;
+      bizBtn.textContent = 'Sending...';
+      try {
+        await fetch('https://formspree.io/f/mojpjvwb', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({
+            'Sauna Name': bizSaunaName.value.trim(),
+            'Email': bizEmail.value.trim(),
+            'Phone': document.getElementById('biz-phone').value.trim() || '—',
+            '_subject': `New seána listing request — ${bizSaunaName.value.trim()}`,
+          }),
+        });
+      } catch (err) {
+        console.error(err);
+      }
+      document.getElementById('biz-form-fields').style.display = 'none';
+      document.getElementById('biz-success').style.display = 'block';
+    }
+  </script>
 
 </body>
 </html>
