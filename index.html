@@ -663,18 +663,7 @@
     <div class="footer-links">
       <a href="mailto:info@seana.ie">Contact</a>
       <a href="/privacy">Privacy Policy</a>
-      <a href="#cookie-policy">Cookie Policy</a>
       <a href="/portal/onboard.html">List Your Sauna</a>
-    </div>
-    <div id="cookie-policy" style="max-width: 640px; margin: 32px auto 0; text-align: left;">
-      <h3 style="font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; text-align: center;">Cookie Policy</h3>
-      <p class="footer-text" style="line-height: 1.7;">
-        Se&aacute;na uses a small number of cookies to make the site work and improve your experience.
-        <strong style="color: var(--text-secondary);">Essential cookies</strong> are required for the site to function and to remember your cookie preference.
-        <strong style="color: var(--text-secondary);">Non-essential cookies</strong> (for analytics and understanding how the site is used) are only set after you click &ldquo;Accept&rdquo; in the cookie banner.
-        You can decline non-essential cookies at any time, and you can clear cookies through your browser settings.
-        We do not sell your data. For full details, see our <a href="/privacy" style="color: var(--amber); text-decoration: underline;">Privacy Policy</a>.
-      </p>
     </div>
     <p class="footer-text" style="margin-top: 24px;">&copy; 2026 Se&aacute;na. All rights reserved.</p>
   </footer>
@@ -797,48 +786,74 @@
 
   <!-- === Cookie consent === -->
   <style>
-    #cookie-banner {
+    #cookie-overlay {
       position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
+      inset: 0;
       z-index: 9999;
       display: none;
       align-items: center;
-      gap: 20px;
-      flex-wrap: wrap;
       justify-content: center;
-      padding: 18px 24px;
-      background: rgba(26, 29, 35, 0.97);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-top: 1px solid var(--card-border);
-      color: var(--text-secondary);
-      font-size: 14px;
-      line-height: 1.5;
+      padding: 24px;
+      background: rgba(15, 17, 20, 0.65);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
     }
-    #cookie-banner.show { display: flex; }
-    #cookie-banner p { margin: 0; max-width: 640px; }
-    #cookie-banner a { color: var(--amber); text-decoration: underline; }
-    #cookie-banner .cookie-actions { display: flex; gap: 12px; flex-shrink: 0; }
-    #cookie-banner button {
+    #cookie-overlay.show { display: flex; }
+    #cookie-modal {
+      width: 100%;
+      max-width: 440px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 28px;
+      text-align: center;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+      animation: cookie-pop 0.25s ease;
+    }
+    @keyframes cookie-pop {
+      from { opacity: 0; transform: translateY(12px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    #cookie-modal h3 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 10px;
+    }
+    #cookie-modal p {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text-secondary);
+      margin: 0 0 22px;
+    }
+    #cookie-modal a { color: var(--amber); text-decoration: underline; }
+    #cookie-modal .cookie-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    #cookie-modal button {
       font: inherit;
       font-weight: 600;
-      padding: 10px 22px;
+      padding: 12px 28px;
       border-radius: 999px;
       cursor: pointer;
       border: 1px solid var(--card-border);
-      transition: opacity 0.2s ease, transform 0.2s ease;
+      transition: transform 0.2s ease, opacity 0.2s ease;
     }
-    #cookie-banner button:hover { transform: translateY(-1px); }
+    #cookie-modal button:hover { transform: translateY(-1px); }
     #cookie-accept { background: var(--orange); color: #fff; border-color: var(--orange); }
     #cookie-decline { background: transparent; color: var(--text-secondary); }
   </style>
-  <div id="cookie-banner" role="dialog" aria-live="polite" aria-label="Cookie consent">
-    <p>We use cookies to remember your preferences and understand how Se&aacute;na is used. You can accept or decline non-essential cookies.</p>
-    <div class="cookie-actions">
-      <button id="cookie-decline" type="button">Decline</button>
-      <button id="cookie-accept" type="button">Accept</button>
+  <div id="cookie-overlay">
+    <div id="cookie-modal" role="dialog" aria-modal="true" aria-labelledby="cookie-title" aria-describedby="cookie-desc">
+      <h3 id="cookie-title">We value your privacy</h3>
+      <p id="cookie-desc">We use cookies to remember your preferences and understand how Se&aacute;na is used. You can accept or decline non-essential cookies. See our <a href="/privacy">Privacy Policy</a>.</p>
+      <div class="cookie-actions">
+        <button id="cookie-decline" type="button">Decline</button>
+        <button id="cookie-accept" type="button">Accept</button>
+      </div>
     </div>
   </div>
   <script>
@@ -863,15 +878,15 @@
         }, '');
       }
 
-      var banner = document.getElementById('cookie-banner');
+      var overlay = document.getElementById('cookie-overlay');
 
       function respond(choice) {
         setCookie(KEY, choice, 365);
-        banner.classList.remove('show');
+        overlay.classList.remove('show');
       }
 
       if (!getCookie(KEY)) {
-        banner.classList.add('show');
+        overlay.classList.add('show');
       }
 
       document.getElementById('cookie-accept').addEventListener('click', function () {
