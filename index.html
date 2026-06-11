@@ -784,5 +784,93 @@
   </script>
   <script src="https://assets.calendly.com/assets/external/widget.js" type="text/javascript" async></script>
 
+  <!-- === Cookie consent === -->
+  <style>
+    #cookie-banner {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding: 18px 24px;
+      background: rgba(26, 29, 35, 0.97);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--card-border);
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    #cookie-banner.show { display: flex; }
+    #cookie-banner p { margin: 0; max-width: 640px; }
+    #cookie-banner a { color: var(--amber); text-decoration: underline; }
+    #cookie-banner .cookie-actions { display: flex; gap: 12px; flex-shrink: 0; }
+    #cookie-banner button {
+      font: inherit;
+      font-weight: 600;
+      padding: 10px 22px;
+      border-radius: 999px;
+      cursor: pointer;
+      border: 1px solid var(--card-border);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    #cookie-banner button:hover { transform: translateY(-1px); }
+    #cookie-accept { background: var(--orange); color: #fff; border-color: var(--orange); }
+    #cookie-decline { background: transparent; color: var(--text-secondary); }
+  </style>
+  <div id="cookie-banner" role="dialog" aria-live="polite" aria-label="Cookie consent">
+    <p>We use cookies to remember your preferences and understand how Se&aacute;na is used. You can accept or decline non-essential cookies.</p>
+    <div class="cookie-actions">
+      <button id="cookie-decline" type="button">Decline</button>
+      <button id="cookie-accept" type="button">Accept</button>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var KEY = 'seana_cookie_consent';
+
+      function setCookie(name, value, days) {
+        var expires = '';
+        if (days) {
+          var d = new Date();
+          d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
+          expires = '; expires=' + d.toUTCString();
+        }
+        document.cookie = name + '=' + encodeURIComponent(value) + expires +
+          '; path=/; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : '');
+      }
+
+      function getCookie(name) {
+        return document.cookie.split('; ').reduce(function (acc, c) {
+          var parts = c.split('=');
+          return parts[0] === name ? decodeURIComponent(parts.slice(1).join('=')) : acc;
+        }, '');
+      }
+
+      var banner = document.getElementById('cookie-banner');
+
+      function respond(choice) {
+        setCookie(KEY, choice, 365);
+        banner.classList.remove('show');
+      }
+
+      if (!getCookie(KEY)) {
+        banner.classList.add('show');
+      }
+
+      document.getElementById('cookie-accept').addEventListener('click', function () {
+        respond('accepted');
+      });
+      document.getElementById('cookie-decline').addEventListener('click', function () {
+        respond('declined');
+      });
+    })();
+  </script>
+
 </body>
 </html>
