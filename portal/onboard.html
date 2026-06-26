@@ -29,6 +29,25 @@
       min-height: 100vh;
     }
 
+    /* Animated shader background — matches the landing page */
+    #shader-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      opacity: 0.35;
+      pointer-events: none;
+    }
+    #shader-bg canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    /* Keep page content above the shader */
+    nav, .page { position: relative; z-index: 1; }
+
     nav {
       display: flex; align-items: center; justify-content: space-between;
       padding: 16px 24px; border-bottom: 1px solid var(--border);
@@ -76,6 +95,9 @@
 </head>
 <body>
 
+  <!-- Three.js shader background (fixed, behind entire page) -->
+  <div id="shader-bg"></div>
+
   <nav>
     <a href="/" class="nav-brand">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C8785A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -116,6 +138,89 @@
     </div>
 
   </div>
+
+  <!-- Three.js for shader animation (same as landing page) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    (function() {
+      var container = document.getElementById('shader-bg');
+      if (!container || typeof THREE === 'undefined') return;
+
+      var vertexShader = 'void main(){gl_Position=vec4(position,1.0);}';
+
+      var fragmentShader = [
+        'precision highp float;',
+        'uniform vec2 resolution;',
+        'uniform float time;',
+        '',
+        'void main(void){',
+        '  vec2 uv=(gl_FragCoord.xy*2.0-resolution.xy)/min(resolution.x,resolution.y);',
+        '  float t=time*0.05;',
+        '  float lw=0.003;',
+        '',
+        '  vec3 tint1=vec3(0.78,0.47,0.35);',
+        '  vec3 tint2=vec3(0.83,0.58,0.43);',
+        '  vec3 tint3=vec3(0.72,0.40,0.28);',
+        '',
+        '  float v1=0.0;',
+        '  for(int i=0;i<6;i++){',
+        '    v1+=lw*float(i*i)/abs(fract(t+float(i)*0.012)*4.0-length(uv)+mod(uv.x+uv.y,0.2));',
+        '  }',
+        '',
+        '  float v2=0.0;',
+        '  for(int i=0;i<5;i++){',
+        '    v2+=lw*float(i*i)/abs(fract(t+0.333+float(i)*0.015)*4.0-length(uv*1.05)+mod(uv.x-uv.y,0.22));',
+        '  }',
+        '',
+        '  float v3=0.0;',
+        '  for(int i=0;i<5;i++){',
+        '    v3+=lw*float(i*i)/abs(fract(t+0.666+float(i)*0.01)*4.0-length(uv*0.95)+mod(uv.x+uv.y*0.5,0.18));',
+        '  }',
+        '',
+        '  float glow=0.06/(0.4+length(uv)*length(uv));',
+        '',
+        '  vec3 col=tint1*v1 + tint2*v2*0.7 + tint3*v3*0.5 + tint1*glow;',
+        '  gl_FragColor=vec4(col,1.0);',
+        '}'
+      ].join('\n');
+
+      var camera = new THREE.Camera();
+      camera.position.z = 1;
+      var scene = new THREE.Scene();
+      var geo = new THREE.PlaneGeometry(2, 2);
+      var uniforms = {
+        time: { type: 'f', value: 1.0 },
+        resolution: { type: 'v2', value: new THREE.Vector2() }
+      };
+      var mat = new THREE.ShaderMaterial({
+        uniforms: uniforms,
+        vertexShader: vertexShader,
+        fragmentShader: fragmentShader
+      });
+      scene.add(new THREE.Mesh(geo, mat));
+
+      var renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      container.appendChild(renderer.domElement);
+
+      function resize() {
+        var w = container.clientWidth;
+        var h = container.clientHeight;
+        renderer.setSize(w, h);
+        uniforms.resolution.value.x = renderer.domElement.width;
+        uniforms.resolution.value.y = renderer.domElement.height;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      function animate() {
+        requestAnimationFrame(animate);
+        uniforms.time.value += 0.05;
+        renderer.render(scene, camera);
+      }
+      animate();
+    })();
+  </script>
 
   <script>
     const form = document.getElementById('listing-form');
