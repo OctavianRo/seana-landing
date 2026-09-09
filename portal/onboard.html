@@ -5,8 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>List Your Sauna — seána</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="icon" type="image/png" href="/favicon.png" sizes="32x32">
-  <link rel="apple-touch-icon" href="/favicon.png">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -91,7 +89,9 @@
     .success-icon { font-size: 48px; margin-bottom: 20px; }
     .success h2 { font-size: 26px; font-weight: 800; margin-bottom: 12px; }
     .success p { font-size: 16px; color: var(--text2); line-height: 1.6; }
-  </style>
+  
+:root{--bg:#f4f1e8;--text:#263e32;--text2:#52634f;--text3:#657167;--border:#c7cebf;--border-focus:#be5735;--orange:#263e32;--radius:3px;--radius-sm:3px}h1{font:54px/1.05 Georgia,serif;letter-spacing:-2px}.page{max-width:600px;padding-top:65px}.nav-brand{font-size:30px;letter-spacing:-1px}input[type=text],input[type=email],input[type=tel],textarea{background:#faf8f1;border:1px solid var(--border);color:var(--text);width:100%;padding:14px 16px;border-radius:3px;font:16px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}textarea{resize:vertical}.btn{color:#f4f1e8}.privacy-note{font-size:12px;color:var(--text2);line-height:1.8;margin:24px 0}.privacy-note a{color:inherit}:focus-visible{outline:3px solid #be5735;outline-offset:4px}#form-error{color:#9c3224;font-size:14px;margin:15px 0}.subtitle{margin-top:20px}.success h2{font:42px Georgia,serif}
+</style>
 </head>
 <body>
 
@@ -111,116 +111,33 @@
 
     <div id="form-view">
       <h1>Get listed on seána</h1>
-      <p class="subtitle">Drop your details and I'll be in touch to get your sauna live.</p>
+      <p class="subtitle">Tell us about your place. We’ll follow up to help you prepare for the seána launch.</p>
 
       <form id="listing-form" action="https://formspree.io/f/mojpjvwb" method="POST">
         <input type="hidden" name="_subject" value="New seána listing request" />
         <div class="field">
-          <label>Sauna name *</label>
+          <label for="saunaName">Sauna name *</label>
           <input type="text" name="Sauna Name" id="saunaName" placeholder="Your sauna name" autocomplete="organization" required />
         </div>
         <div class="field">
-          <label>Email address *</label>
+          <label for="email">Email address *</label>
           <input type="email" name="email" id="email" placeholder="you@yoursauna.ie" autocomplete="email" required />
         </div>
         <div class="field">
-          <label>Phone number</label>
+          <label for="phone">Phone number</label>
           <input type="tel" name="Phone" id="phone" placeholder="+353 ..." autocomplete="tel" />
         </div>
-        <button class="btn" id="submit-btn" type="submit">Get Listed</button>
+        <div class="field"><label for="location">Town / county *</label><input id="location" name="Location" type="text" autocomplete="address-level2" maxlength="160" required></div><div class="field"><label for="about">Tell us about your sauna</label><textarea id="about" name="About" rows="4" maxlength="3000" placeholder="Your setting, number of locations, or planned opening date…"></textarea></div><p class="privacy-note">We’ll use these details to respond to your enquiry. <a href="/privacy/">Read our privacy policy</a>.</p><p id="form-error" role="alert" hidden></p><button class="btn" id="submit-btn" type="submit">Send my enquiry ↗</button>
       </form>
     </div>
 
     <div class="success" id="success-view">
       <div class="success-icon">🔥</div>
-      <h2>You're on the list!</h2>
-      <p>Thanks for registering. I'll be in touch shortly to get your sauna live on seána.</p>
+      <h2 tabindex="-1" id="success-heading">A warmer chapter awaits.</h2>
+      <p>Thanks for your enquiry. We’ll be in touch about preparing your sauna for launch.</p>
     </div>
 
   </div>
-
-  <!-- Three.js for shader animation (same as landing page) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script>
-    (function() {
-      var container = document.getElementById('shader-bg');
-      if (!container || typeof THREE === 'undefined') return;
-
-      var vertexShader = 'void main(){gl_Position=vec4(position,1.0);}';
-
-      var fragmentShader = [
-        'precision highp float;',
-        'uniform vec2 resolution;',
-        'uniform float time;',
-        '',
-        'void main(void){',
-        '  vec2 uv=(gl_FragCoord.xy*2.0-resolution.xy)/min(resolution.x,resolution.y);',
-        '  float t=time*0.05;',
-        '  float lw=0.003;',
-        '',
-        '  vec3 tint1=vec3(0.78,0.47,0.35);',
-        '  vec3 tint2=vec3(0.83,0.58,0.43);',
-        '  vec3 tint3=vec3(0.72,0.40,0.28);',
-        '',
-        '  float v1=0.0;',
-        '  for(int i=0;i<6;i++){',
-        '    v1+=lw*float(i*i)/abs(fract(t+float(i)*0.012)*4.0-length(uv)+mod(uv.x+uv.y,0.2));',
-        '  }',
-        '',
-        '  float v2=0.0;',
-        '  for(int i=0;i<5;i++){',
-        '    v2+=lw*float(i*i)/abs(fract(t+0.333+float(i)*0.015)*4.0-length(uv*1.05)+mod(uv.x-uv.y,0.22));',
-        '  }',
-        '',
-        '  float v3=0.0;',
-        '  for(int i=0;i<5;i++){',
-        '    v3+=lw*float(i*i)/abs(fract(t+0.666+float(i)*0.01)*4.0-length(uv*0.95)+mod(uv.x+uv.y*0.5,0.18));',
-        '  }',
-        '',
-        '  float glow=0.06/(0.4+length(uv)*length(uv));',
-        '',
-        '  vec3 col=tint1*v1 + tint2*v2*0.7 + tint3*v3*0.5 + tint1*glow;',
-        '  gl_FragColor=vec4(col,1.0);',
-        '}'
-      ].join('\n');
-
-      var camera = new THREE.Camera();
-      camera.position.z = 1;
-      var scene = new THREE.Scene();
-      var geo = new THREE.PlaneGeometry(2, 2);
-      var uniforms = {
-        time: { type: 'f', value: 1.0 },
-        resolution: { type: 'v2', value: new THREE.Vector2() }
-      };
-      var mat = new THREE.ShaderMaterial({
-        uniforms: uniforms,
-        vertexShader: vertexShader,
-        fragmentShader: fragmentShader
-      });
-      scene.add(new THREE.Mesh(geo, mat));
-
-      var renderer = new THREE.WebGLRenderer({ antialias: true });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      container.appendChild(renderer.domElement);
-
-      function resize() {
-        var w = container.clientWidth;
-        var h = container.clientHeight;
-        renderer.setSize(w, h);
-        uniforms.resolution.value.x = renderer.domElement.width;
-        uniforms.resolution.value.y = renderer.domElement.height;
-      }
-      resize();
-      window.addEventListener('resize', resize);
-
-      function animate() {
-        requestAnimationFrame(animate);
-        uniforms.time.value += 0.05;
-        renderer.render(scene, camera);
-      }
-      animate();
-    })();
-  </script>
 
   <script>
     const form = document.getElementById('listing-form');
@@ -228,23 +145,23 @@
 
     form.addEventListener('submit', async function(e) {
       e.preventDefault();
-      btn.disabled = true;
+      if (btn.disabled) return; document.getElementById('form-error').hidden = true; btn.disabled = true;
       btn.textContent = 'Sending...';
       try {
         const data = new FormData(form);
-        const res = await fetch('https://formspree.io/f/mojpjvwb', {
+        const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 15000); let res; try { res = await fetch('https://formspree.io/f/mojpjvwb', {
           method: 'POST',
           headers: { 'Accept': 'application/json' },
-          body: data,
-        });
+          body: data, signal: controller.signal,
+        }); } finally { clearTimeout(timeout); }
         if (!res.ok) throw new Error(`Formspree error ${res.status}`);
         document.getElementById('form-view').style.display = 'none';
-        document.getElementById('success-view').style.display = 'block';
+        document.getElementById('success-view').style.display = 'block'; document.getElementById('success-heading').focus();
       } catch (err) {
         console.error(err);
         btn.disabled = false;
-        btn.textContent = 'Get Listed';
-        alert('Something went wrong — please try again or email octavian.rosca7@gmail.com directly.');
+        btn.textContent = 'Send my enquiry ↗';
+        const error = document.getElementById('form-error'); error.hidden = false; error.textContent = 'We couldn’t send your enquiry. Please try again or email info@seana.ie.';
       }
     });
   </script>
