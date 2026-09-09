@@ -5,7 +5,7 @@ root = Path(__file__).resolve().parent.parent
 out = root / "dist"
 if out.exists(): shutil.rmtree(out)
 out.mkdir()
-for name in ("index.html", "styles.css", "main.js", "favicon.svg", "assets", "portal", "privacy", "cookies", "screenshots"):
+for name in ("index.html", "styles.css", "main.js", "favicon.svg", "favicon.png", "assets", "portal", "privacy", "cookies"):
     source = root / name
     if source.is_dir(): shutil.copytree(source, out / name)
     elif source.is_file(): shutil.copy2(source, out / name)

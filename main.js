@@ -12,7 +12,7 @@ const reset = document.querySelector(".reset-demo");
 const count = document.querySelector("#session-count");
 let guests = 1;
 function renderSession() {
-  seats.forEach((seat, index) => { seat.classList.toggle("occupied", index < guests); seat.textContent = index === 0 ? "You" : index < guests ? "Friend" : "＋"; });
+  seats.forEach((seat, index) => { seat.classList.toggle("occupied", index < guests); seat.textContent = index === 0 ? "You" : index < guests ? `+${index}` : "＋"; });
   document.querySelector(".bench").setAttribute("aria-label", `Illustrative session: ${guests} of six places filled`);
   count.textContent = `${guests} of 6 places filled. ${guests === 6 ? "A full bench. A shared ritual." : guests === 1 ? "It starts with you." : "Good company is catching on."}`;
   invite.disabled = guests === 6;
