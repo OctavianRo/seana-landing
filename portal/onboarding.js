@@ -18,16 +18,23 @@ async function api(path, body) {
 }
 function action(label, fn) { const button = node('button', label); button.type = 'button'; button.addEventListener('click', () => busy(button, fn)); return button; }
 async function busy(button, fn) { button.disabled = true; message(''); try { await fn(); } catch (error) { message(error.name === 'AbortError' ? 'This is taking longer than expected. Please try again.' : error instanceof TypeError ? 'We couldn’t connect to owner setup. Please try again, or contact hello@seana.ie for help.' : error.message || 'Something went wrong. Please try again.'); } finally { button.disabled = false; } }
-async function begin() {
+async function begin(mode = 'signin') {
+  message('Opening secure owner sign-in…');
   if (!clerk) {
     const config = await api('/api/public-config');
     if (config.ownerOnboardingEnabled !== true) throw new Error('Owner setup is being prepared. Please contact hello@seana.ie and we’ll help you get started.');
     if (!config.clerkPublishableKey) throw new Error('Secure sign-in is unavailable. Please contact hello@seana.ie.');
-    await new Promise((resolve, reject) => { const script = document.createElement('script'); script.src = 'https://js.clerk.com/v5/clerk.browser.js'; script.crossOrigin = 'anonymous'; script.setAttribute('data-clerk-publishable-key', config.clerkPublishableKey); script.onload = resolve; script.onerror = () => reject(new Error('Could not load secure sign-in. Please refresh.')); document.head.append(script); });
-    clerk = window.Clerk; await clerk.load({ appearance: { variables: { colorPrimary: '#C8785A', colorBackground: '#1A1D23', colorText: '#F0ECE6', colorTextSecondary: '#b8b2ac', colorInputBackground: '#0F1114', colorInputText: '#F0ECE6', borderRadius: '4px' } } });
+    clerk = await window.SeanaAuth.load(config.clerkPublishableKey);
   }
-  if (!clerk.user) { clerk.mountSignIn($('signin'), { forceRedirectUrl: location.origin + location.pathname + '?source=' + encodeURIComponent(source) + '#setup' }); return; }
-  await refresh(); $('welcome').classList.add('hidden'); $('workspace').classList.remove('hidden');
+  if (!clerk.user) {
+    const returnUrl = location.origin + location.pathname + '?source=' + encodeURIComponent(source) + '#setup';
+    clerk.unmountSignIn?.($('signin')); clerk.unmountSignUp?.($('signin'));
+    if (mode === 'signup') clerk.mountSignUp($('signin'), { forceRedirectUrl: returnUrl, signInUrl: location.origin + location.pathname + '?source=' + encodeURIComponent(source) + '&auth=signin#setup' });
+    else clerk.mountSignIn($('signin'), { forceRedirectUrl: returnUrl, signUpUrl: location.origin + location.pathname + '?source=' + encodeURIComponent(source) + '&auth=signup#setup' });
+    message('Verify your email to continue. Dashboard access requires verified ownership of each sauna.');
+    $('signin').scrollIntoView?.({ block: 'nearest' }); return;
+  }
+  await refresh(); $('welcome').classList.add('hidden'); $('workspace').classList.remove('hidden'); message('Signed in. Claim or verify your sauna to unlock its dashboard.');
 }
 async function refresh() {
   const [state, setup] = await Promise.all([api('/api/onboarding/state'), api('/api/onboarding/readiness')]);
@@ -71,13 +78,21 @@ async function claimOptions(sauna) {
   }
 }
 document.querySelectorAll('a[href="/portal/dashboard.html"]').forEach(link => { link.href = dashboardUrl; });
-$('begin').addEventListener('click', () => busy($('begin'), begin));
+async function openIdentity(mode) {
+  const buttons = [$('begin'), $('register')];
+  if (buttons.some(button => button.disabled)) return;
+  buttons.forEach(button => { button.disabled = true; button.setAttribute('aria-busy', 'true'); });
+  try { await begin(mode); } catch (error) { message(error.name === 'AbortError' ? 'Sign-in timed out. Please try again.' : error instanceof TypeError ? 'We couldn’t connect to owner setup. Please try again, or contact hello@seana.ie.' : error.message); }
+  finally { buttons.forEach(button => { button.disabled = false; button.setAttribute('aria-busy', 'false'); }); }
+}
+$('begin').addEventListener('click', () => openIdentity('signin'));
+$('register').addEventListener('click', () => openIdentity('signup'));
 $('refresh').addEventListener('click', () => busy($('refresh'), refresh));
 $('signout').addEventListener('click', () => busy($('signout'), async () => { await clerk.signOut(); location.reload(); }));
 $('search-form').addEventListener('submit', e => { e.preventDefault(); const button = e.currentTarget.querySelector('button'); busy(button, async () => { const results = await api('/api/business/find-sauna', { name: $('search').value }); $('results').replaceChildren(); $('claim').replaceChildren(); if (!results.length) $('results').append(node('p', 'No matches. Try another part of the name, or add your location below.')); for (const sauna of results) { const row = node('div', '', 'result'); row.append(node('span', `${sauna.name} · ${sauna.county || sauna.location || ''}`), action('This is my sauna', () => claimOptions(sauna))); $('results').append(row); } }); });
 $('new-form').addEventListener('submit', e => { e.preventDefault(); const form = e.currentTarget, button = form.querySelector('button'); busy(button, async () => { const body = Object.fromEntries(new FormData(form)); for (const key of ['lat', 'lng', 'session_price', 'max_capacity']) { if (body[key] === '') delete body[key]; else body[key] = Number(body[key]); } await api('/api/onboarding/new-location', { ...body, source }); form.reset(); $('new-location').open = false; await refresh(); message('Your location has been submitted for review. Your setup checklist is saved above.'); }); });
 // No form contents or authentication tokens are saved in browser storage.
-if (location.hash === '#setup') busy($('begin'), begin);
+if (location.hash === '#setup') openIdentity(new URLSearchParams(location.search).get('auth') === 'signup' ? 'signup' : 'signin');
 
 $('share-owner').addEventListener('click', () => busy($('share-owner'), async () => {
   const url = location.origin + location.pathname + '?source=owner_referral';
