@@ -3,7 +3,7 @@
 (function () {
   'use strict';
   let pending;
-  const appearance = { variables: { colorPrimary: '#C8785A', colorBackground: '#1A1D23', colorText: '#F0ECE6', colorTextSecondary: '#b8b2ac', colorInputBackground: '#0F1114', colorInputText: '#F0ECE6', borderRadius: '4px' } };
+  const appearance = { elements: { formButtonPrimary: { color: '#21140e' }, footerActionLink: { color: '#ffb580' } }, variables: { colorPrimary: '#f59a62', colorBackground: '#1A1D23', colorText: '#fffaf4', colorTextSecondary: '#d0d2d5', colorInputBackground: '#0F1114', colorInputText: '#fffaf4', borderRadius: '4px' } };
   function domainFromKey(key) {
     if (!/^pk_(test|live)_[A-Za-z0-9+/=]+$/.test(key || '')) throw new Error('Secure sign-in is not configured. Please contact hello@seana.ie.');
     const domain = atob(key.slice(8)).replace(/\$$/, '');
