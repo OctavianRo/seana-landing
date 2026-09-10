@@ -93,8 +93,8 @@ async function openIdentity(mode) {
   try { await begin(mode); } catch (error) { message(error.name === 'AbortError' ? 'Sign-in timed out. Please try again.' : error instanceof TypeError ? 'We couldn’t connect to owner setup. Please try again, or contact hello@seana.ie.' : error.message); }
   finally { buttons.forEach(button => { button.disabled = false; button.setAttribute('aria-busy', 'false'); }); }
 }
-$('begin').addEventListener('click', () => openIdentity('signin'));
-$('register').addEventListener('click', () => openIdentity('signup'));
+if ($('begin').tagName === 'BUTTON') $('begin').addEventListener('click', () => openIdentity('signin'));
+if ($('register').tagName === 'BUTTON') $('register').addEventListener('click', () => openIdentity('signup'));
 $('refresh').addEventListener('click', () => busy($('refresh'), refresh));
 $('signout').addEventListener('click', () => busy($('signout'), async () => { await clerk.signOut(); location.reload(); }));
 $('search-form').addEventListener('submit', e => { e.preventDefault(); const button = e.currentTarget.querySelector('button'); busy(button, async () => { const results = await api('/api/business/find-sauna', { name: $('search').value }); $('results').replaceChildren(); $('claim').replaceChildren(); if (!results.length) $('results').append(node('p', 'No matches. Try another part of the name, or add your location below.')); for (const sauna of results) { const row = node('div', '', 'result'); row.append(node('span', `${sauna.name} · ${sauna.county || sauna.location || ''}`), action('This is my sauna', () => claimOptions(sauna))); $('results').append(row); } }); });
