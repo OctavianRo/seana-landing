@@ -21,7 +21,15 @@ async function busy(button, fn) { button.disabled = true; message(''); try { awa
 async function begin(mode = 'signin') {
   message('Opening secure owner sign-in…');
   if (!clerk) {
-    const config = await api('/api/public-config');
+    let config;
+    try { config = await api('/api/public-config'); }
+    catch (error) {
+      // Account creation remains available while the owner API is unavailable.
+      // This grants no sauna permissions and uses only our fixed Clerk origin.
+      message('Owner setup is temporarily unavailable. Opening your secure account page. Return here later to finish your sauna setup.');
+      location.assign(mode === 'signup' ? 'https://accounts.seana.ie/sign-up' : 'https://accounts.seana.ie/sign-in');
+      return;
+    }
     if (config.ownerOnboardingEnabled !== true) throw new Error('Owner setup is being prepared. Please contact hello@seana.ie and we’ll help you get started.');
     if (!config.clerkPublishableKey) throw new Error('Secure sign-in is unavailable. Please contact hello@seana.ie.');
     clerk = await window.SeanaAuth.load(config.clerkPublishableKey);
