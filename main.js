@@ -23,9 +23,14 @@ invite.addEventListener("click", () => { if (guests < 6) guests++; renderSession
 reset.addEventListener("click", () => { guests = 1; renderSession(); invite.focus(); });
 const banner = document.querySelector(".cookie-banner");
 const preferences = document.querySelector(".cookie-settings");
-preferences.addEventListener("click", () => { banner.hidden = !banner.hidden; if (!banner.hidden) banner.querySelector("button").focus(); });
+// No analytics or advertising scripts are installed. This records only the
+// requested preference; it is not permission for future, unspecified tracking.
+let remembered = false;
+try { remembered = document.cookie.split(';').some(v => v.trim() === 'seana_cookie_consent=essential_v2'); } catch {}
+banner.hidden = remembered;
+preferences.addEventListener("click", () => { banner.hidden = false; banner.querySelector("button").focus(); });
 banner.querySelectorAll("[data-consent]").forEach(button => button.addEventListener("click", () => {
-  try { document.cookie = `seana_cookie_consent=${button.dataset.consent}; Path=/; Max-Age=31536000; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`; } catch { /* Preferences remain usable when browser storage is unavailable. */ }
+  try { document.cookie = `seana_cookie_consent=essential_v2; Path=/; Max-Age=15552000; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`; } catch {}
   banner.hidden = true;
   preferences.focus();
 }));
