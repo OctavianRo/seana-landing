@@ -60,6 +60,13 @@
   .spin{width:26px;height:26px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:sp .7s linear infinite;margin:50px auto}
   @keyframes sp{to{transform:rotate(360deg)}}
   @media(max-width:600px){.main{padding:14px}.topbar{padding:0 12px}}
+
+/* Clerk defaults to a fixed-width card; keep embedded sign-in within phones. */
+#signin{min-width:0;grid-template-columns:minmax(0,1fr)}
+#signin>.card{min-width:0;width:100%;max-width:480px;justify-self:center}
+#clerk-signin{min-width:0;width:100%}
+#clerk-signin .cl-rootBox,#clerk-signin .cl-cardBox,#clerk-signin .cl-card{width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+@media(max-width:480px){#signin{padding:16px}#signin>.card{padding:16px}#clerk-signin .cl-card{padding:20px 16px}}
 </style>
 <link rel="icon" type="image/png" sizes="128x128" href="/portal/favicon.png?v=3"><link rel="icon" type="image/svg+xml" href="/portal/favicon.svg?v=3"></head>
 <body>
