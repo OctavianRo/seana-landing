@@ -2,9 +2,9 @@
 const APP_ORIGIN = 'https://saunaapp-production.up.railway.app';
 const localApp = ['localhost', '127.0.0.1'].includes(location.hostname) && location.port !== '4173';
 const API = localApp || location.origin === APP_ORIGIN ? '' : APP_ORIGIN;
-const dashboardUrl = API + '/portal/dashboard.html';
+const dashboardUrl = '/portal/dashboard.html';
 const $ = id => document.getElementById(id);
-let clerk;
+let clerk, features = {};
 const incomingSource = new URLSearchParams(location.search).get('source');
 const source = ['website', 'owner_referral', 'outreach', 'event'].includes(incomingSource) ? incomingSource : 'direct';
 function node(tag, text, className) { const el = document.createElement(tag); el.textContent = text; if (className) el.className = className; return el; }
@@ -22,7 +22,7 @@ async function begin(mode = 'signin') {
   message('Opening secure owner sign-in…');
   if (!clerk) {
     let config;
-    try { config = await api('/api/public-config'); }
+    try { config = await api('/api/public-config'); features = config; }
     catch (error) {
       // Account creation remains available while the owner API is unavailable.
       // This grants no sauna permissions and uses only our fixed Clerk origin.
@@ -62,12 +62,12 @@ async function refresh() {
     if (!place.checks.find(c => c.id === 'verification').done) panel.append(node('p', place.reviewStatus === 'rejected' ? 'Please contact hello@seana.ie to correct your submission before another review.' : 'Your location is awaiting review. Access stays restricted until ownership is verified.'));
     else {
       const link = node('a', 'Edit details in dashboard', 'btn secondary'); link.href = dashboardUrl; panel.append(link);
-      if (place.role === 'owner' && !place.checks.find(c => c.id === 'payments').done) panel.append(action('Connect Stripe payments', async () => {
+      if (features.paymentsEnabled && place.role === 'owner' && !place.checks.find(c => c.id === 'payments').done) panel.append(action('Connect Stripe payments', async () => {
         const result = await api('/api/business/stripe-connect/start', { saunaId: place.saunaId });
         const url = new URL(result.url); if (url.protocol !== 'https:' || !(url.hostname === 'stripe.com' || url.hostname.endsWith('.stripe.com'))) throw new Error('Unexpected payment setup link. Contact support.'); message('Your secure Stripe setup link is ready. Complete setup there, then return here and refresh.'); const link = node('a', 'Continue to Stripe', 'btn'); link.href = url.href; link.target = '_blank'; link.rel = 'noopener noreferrer'; panel.append(link);
       }));
     }
-    if (place.ready && place.role === 'owner') panel.append(action('Finish business setup', async () => { await api('/api/onboarding/complete', {}); message('Business setup completed. Open your dashboard to manage bookings.'); }));
+    if (features.paymentsEnabled && place.ready && place.role === 'owner') panel.append(action('Finish business setup', async () => { await api('/api/onboarding/complete', {}); message('Business setup completed. Open your dashboard to manage bookings.'); }));
     root.append(panel);
   }
   if (!setup.locations.length && !(state.claims || []).length) root.append(node('p', 'Start by finding your sauna below.'));
