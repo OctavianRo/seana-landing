@@ -82,7 +82,8 @@
     <div class="logo">seána</div>
     <p id="denied-title" style="font-size:18px;font-weight:700;margin-bottom:10px"></p>
     <p id="denied-body" style="color:var(--text2);font-size:14px;line-height:1.6;margin-bottom:22px"></p>
-    <button class="act ghost" onclick="signOut()">Sign out</button>
+    <button class="act" onclick="location.reload()">Try again</button>
+    <button class="act ghost" onclick="signOut()">Use another account</button>
   </div>
 </div>
 
@@ -153,42 +154,62 @@ function fail(title, body) {
   show('denied');
 }
 
+let authGeneration = 0;
+let observedSession;
+async function timedFetch(url, options = {}) {
+  return fetch(url, { ...options, signal: AbortSignal.timeout(15000) });
+}
+async function showSession(session) {
+  const generation = ++authGeneration;
+  me = null;
+  $('content').replaceChildren();
+  if (!session || session.status !== 'active') {
+    show('signin');
+    clerk.mountSignIn($('clerk-signin'), { forceRedirectUrl: location.origin + location.pathname });
+    return;
+  }
+  show('loading');
+  try {
+    const res = await api('/api/admin/me');
+    if (generation !== authGeneration) return;
+    if (!res.ok) {
+      if (res.status === 401) return fail('Sign-in could not be verified', 'Try again, or sign out and use your approved administrator account. Your session may have expired.');
+      if (res.status === 403 && res.body?.code === 'mfa_required') return fail('Two-factor authentication required', 'Your account requires a second factor. Complete it in your account security settings.');
+      if (res.status >= 500) return fail('Admin service temporarily unavailable', 'Your sign-in succeeded, but the server could not verify access. Please try again.');
+      return fail('No admin access', 'This account is not the approved platform administrator. Use your nominated administrator account.');
+    }
+    me = res.body;
+    $('who').textContent = me.role;
+    $('subtitle').textContent = `Signed in as ${me.email}. Every action here is recorded against your account.`;
+    show('dash');
+    await render();
+  } catch (error) {
+    if (generation === authGeneration) fail('Could not connect to the admin service', 'Check your connection and try again. Your permissions have not changed.');
+  }
+}
 async function boot() {
   let config;
   try {
-    config = await (await fetch(`${API_URL}/api/public-config`)).json();
+    const response = await timedFetch(`${API_URL}/api/public-config`, { cache: 'no-store' });
+    if (!response.ok) throw new Error('Configuration unavailable');
+    config = await response.json();
   } catch {
     return fail('Server unreachable', 'Could not reach the seána API. Try again shortly.');
   }
-
-  if (!config.clerkPublishableKey) {
-    return fail('Authentication not configured',
-      'CLERK_PUBLISHABLE_KEY is not set on the server, so nobody can sign in yet.');
-  }
-
+  if (!config.clerkPublishableKey) return fail('Sign-in temporarily unavailable', 'Please try again shortly.');
   clerk = await window.SeanaAuth.load(config.clerkPublishableKey);
-
-  if (!clerk.user) {
-    show('signin');
-    clerk.mountSignIn($('clerk-signin'), { forceRedirectUrl: location.href });
-    return;
+  // Static pages must respond when Clerk completes sign-in without a page reload.
+  clerk.addListener(({ session }) => {
+    const key = session ? session.id + ':' + session.status : 'signed-out';
+    if (key === observedSession) return;
+    observedSession = key;
+    showSession(session).catch(() => fail('Sign-in could not complete', 'Please reload and try again.'));
+  });
+  const key = clerk.session ? clerk.session.id + ':' + clerk.session.status : 'signed-out';
+  if (key !== observedSession) {
+    observedSession = key;
+    await showSession(clerk.session);
   }
-
-  const res = await api('/api/admin/me');
-  if (!res.ok) {
-    if (res.status === 403 && res.body?.code === 'mfa_required') {
-      return fail('Two-factor authentication required',
-        'Admin access requires a second factor. Enable it in your account security settings, then reload this page.');
-    }
-    return fail('No admin access',
-      'You are signed in, but this account is not a seána administrator. Ask a superadmin to grant access if that is wrong.');
-  }
-
-  me = res.body;
-  $('who').textContent = me.role;
-  $('subtitle').textContent = `Signed in as ${me.email}. Every action here is recorded against your account.`;
-  show('dash');
-  render();
 }
 
 async function signOut() {
@@ -199,7 +220,7 @@ async function signOut() {
 /** Every request carries a fresh, short-lived Clerk session token. */
 async function api(path, options = {}) {
   const token = await clerk.session?.getToken();
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await timedFetch(`${API_URL}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
