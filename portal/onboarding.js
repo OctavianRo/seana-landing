@@ -86,21 +86,28 @@ async function claimOptions(sauna) {
   }
 }
 document.querySelectorAll('a[href="/portal/dashboard.html"]').forEach(link => { link.href = dashboardUrl; });
-async function openIdentity(mode) {
-  const buttons = [$('begin'), $('register')];
-  if (buttons.some(button => button.disabled)) return;
-  buttons.forEach(button => { button.disabled = true; button.setAttribute('aria-busy', 'true'); });
-  try { await begin(mode); } catch (error) { message(error.name === 'AbortError' ? 'Sign-in timed out. Please try again.' : error instanceof TypeError ? 'We couldn’t connect to owner setup. Please try again, or contact hello@seana.ie.' : error.message); }
-  finally { buttons.forEach(button => { button.disabled = false; button.setAttribute('aria-busy', 'false'); }); }
+let identityOpening = false;
+const identityMode = new URLSearchParams(location.search).get('auth') === 'signin' ? 'signin' : 'signup';
+async function openIdentity(mode = identityMode) {
+  if (identityOpening) return;
+  identityOpening = true;
+  const retry = $('identity-retry');
+  retry.classList.add('hidden');
+  retry.disabled = true;
+  try { await begin(mode); }
+  catch (error) {
+    message(error.name === 'AbortError' ? 'Sign-in timed out. Please try again.' : error instanceof TypeError ? 'We couldn’t connect to owner setup. Please try again, or contact hello@seana.ie.' : error.message);
+    retry.classList.remove('hidden');
+  }
+  finally { identityOpening = false; retry.disabled = false; }
 }
-if ($('begin').tagName === 'BUTTON') $('begin').addEventListener('click', () => openIdentity('signin'));
-if ($('register').tagName === 'BUTTON') $('register').addEventListener('click', () => openIdentity('signup'));
+$('identity-retry').addEventListener('click', () => openIdentity());
 $('refresh').addEventListener('click', () => busy($('refresh'), refresh));
 $('signout').addEventListener('click', () => busy($('signout'), async () => { await clerk.signOut(); location.reload(); }));
 $('search-form').addEventListener('submit', e => { e.preventDefault(); const button = e.currentTarget.querySelector('button'); busy(button, async () => { const results = await api('/api/business/find-sauna', { name: $('search').value }); $('results').replaceChildren(); $('claim').replaceChildren(); if (!results.length) $('results').append(node('p', 'No matches. Try another part of the name, or add your location below.')); for (const sauna of results) { const row = node('div', '', 'result'); row.append(node('span', `${sauna.name} · ${sauna.county || sauna.location || ''}`), action('This is my sauna', () => claimOptions(sauna))); $('results').append(row); } }); });
 $('new-form').addEventListener('submit', e => { e.preventDefault(); const form = e.currentTarget, button = form.querySelector('button'); busy(button, async () => { const body = Object.fromEntries(new FormData(form)); for (const key of ['lat', 'lng', 'session_price', 'max_capacity']) { if (body[key] === '') delete body[key]; else body[key] = Number(body[key]); } await api('/api/onboarding/new-location', { ...body, source }); form.reset(); $('new-location').open = false; await refresh(); message('Your location has been submitted for review. Your setup checklist is saved above.'); }); });
 // No form contents or authentication tokens are saved in browser storage.
-if (location.hash === '#setup') openIdentity(new URLSearchParams(location.search).get('auth') === 'signup' ? 'signup' : 'signin');
+const identityReady = openIdentity();
 
 $('share-owner').addEventListener('click', () => busy($('share-owner'), async () => {
   const url = location.origin + location.pathname + '?source=owner_referral';
