@@ -19,7 +19,8 @@ async function api(path, body) {
 function action(label, fn) { const button = node('button', label); button.type = 'button'; button.addEventListener('click', () => busy(button, fn)); return button; }
 async function busy(button, fn) { if(button.disabled)return; button.disabled = true; message(''); try { await fn(); } catch (error) { message(error.name === 'AbortError' ? 'This is taking longer than expected. Please try again.' : error instanceof TypeError ? 'We couldn’t connect to owner setup. Please try again, or contact hello@seana.ie for help.' : error.message || 'Something went wrong. Please try again.'); } finally { button.disabled = false; } }
 async function begin(mode = 'signin') {
-  message('Opening secure owner sign-in…');
+  $('signin').classList.remove('load-failed');
+  message('');
   if (!clerk) {
     const config = await api('/api/public-config'); features = config;
     if (config.ownerOnboardingEnabled !== true) throw new Error('Owner setup is being prepared. Please contact hello@seana.ie and we’ll help you get started.');
@@ -31,8 +32,7 @@ async function begin(mode = 'signin') {
     clerk.unmountSignIn?.($('signin')); clerk.unmountSignUp?.($('signin'));
     if (mode === 'signup') clerk.mountSignUp($('signin'), { forceRedirectUrl: returnUrl, signInUrl: location.origin + location.pathname + '?source=' + encodeURIComponent(source) + '&auth=signin#setup' });
     else clerk.mountSignIn($('signin'), { forceRedirectUrl: returnUrl, signUpUrl: location.origin + location.pathname + '?source=' + encodeURIComponent(source) + '&auth=signup#setup' });
-    message('Verify your email to continue. Dashboard access requires verified ownership of each sauna.');
-    $('signin').scrollIntoView?.({ block: 'nearest' }); return;
+    return;
   }
   await api('/api/accounts/register', {accountType:'owner',source:'website'});
   await refresh(); $('welcome').classList.add('hidden'); $('workspace').classList.remove('hidden'); message('Signed in. Claim or verify your sauna to unlock its dashboard.');
@@ -89,6 +89,7 @@ async function openIdentity(mode = identityMode) {
   retry.disabled = true;
   try { await begin(mode); }
   catch (error) {
+    $('signin').classList.add('load-failed');
     message(error.name === 'AbortError' ? 'Sign-in timed out. Please try again.' : error instanceof TypeError ? 'We couldn’t connect to owner setup. Please try again, or contact hello@seana.ie.' : error.message);
     retry.classList.remove('hidden');
   }
