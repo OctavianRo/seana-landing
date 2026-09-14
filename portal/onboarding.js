@@ -14,7 +14,7 @@ async function api(path, body) {
   const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 15000);
   let response; try { response = await fetch(API + path, { method: body ? 'POST' : 'GET', headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}), signal: controller.signal }); } finally { clearTimeout(timeout); }
   if (!response.headers.get('content-type')?.includes('application/json')) throw new Error('Owner setup is not available yet. Please contact hello@seana.ie and we’ll help you get started.');
-  const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Please try again.'); return result;
+  const result = await response.json(); if (!response.ok) throw new Error(response.status === 401 ? 'We couldn’t verify your account session. Try again, or contact hello@seana.ie.' : result.error || 'Please try again.'); return result;
 }
 function action(label, fn) { const button = node('button', label); button.type = 'button'; button.addEventListener('click', () => busy(button, fn)); return button; }
 async function busy(button, fn) { if(button.disabled)return; button.disabled = true; message(''); try { await fn(); } catch (error) { message(error.name === 'AbortError' ? 'This is taking longer than expected. Please try again.' : error instanceof TypeError ? 'We couldn’t connect to owner setup. Please try again, or contact hello@seana.ie for help.' : error.message || 'Something went wrong. Please try again.'); } finally { button.disabled = false; } }
