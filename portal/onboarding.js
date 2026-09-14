@@ -17,31 +17,24 @@ async function api(path, body) {
   const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Please try again.'); return result;
 }
 function action(label, fn) { const button = node('button', label); button.type = 'button'; button.addEventListener('click', () => busy(button, fn)); return button; }
-async function busy(button, fn) { button.disabled = true; message(''); try { await fn(); } catch (error) { message(error.name === 'AbortError' ? 'This is taking longer than expected. Please try again.' : error instanceof TypeError ? 'We couldn’t connect to owner setup. Please try again, or contact hello@seana.ie for help.' : error.message || 'Something went wrong. Please try again.'); } finally { button.disabled = false; } }
+async function busy(button, fn) { if(button.disabled)return; button.disabled = true; message(''); try { await fn(); } catch (error) { message(error.name === 'AbortError' ? 'This is taking longer than expected. Please try again.' : error instanceof TypeError ? 'We couldn’t connect to owner setup. Please try again, or contact hello@seana.ie for help.' : error.message || 'Something went wrong. Please try again.'); } finally { button.disabled = false; } }
 async function begin(mode = 'signin') {
   message('Opening secure owner sign-in…');
   if (!clerk) {
-    let config;
-    try { config = await api('/api/public-config'); features = config; }
-    catch (error) {
-      // Account creation remains available while the owner API is unavailable.
-      // This grants no sauna permissions and uses only our fixed Clerk origin.
-      message('Owner setup is temporarily unavailable. Opening your secure account page. Return here later to finish your sauna setup.');
-      location.assign(mode === 'signup' ? 'https://accounts.seana.ie/sign-up' : 'https://accounts.seana.ie/sign-in');
-      return;
-    }
+    const config = await api('/api/public-config'); features = config;
     if (config.ownerOnboardingEnabled !== true) throw new Error('Owner setup is being prepared. Please contact hello@seana.ie and we’ll help you get started.');
     if (!config.clerkPublishableKey) throw new Error('Secure sign-in is unavailable. Please contact hello@seana.ie.');
     clerk = await window.SeanaAuth.load(config.clerkPublishableKey);
   }
   if (!clerk.user) {
-    const returnUrl = location.origin + location.pathname + '?source=' + encodeURIComponent(source) + '#setup';
+    const returnUrl = mode==='signup' ? location.origin+dashboardUrl : location.origin + location.pathname + '?source=' + encodeURIComponent(source) + '#setup';
     clerk.unmountSignIn?.($('signin')); clerk.unmountSignUp?.($('signin'));
     if (mode === 'signup') clerk.mountSignUp($('signin'), { forceRedirectUrl: returnUrl, signInUrl: location.origin + location.pathname + '?source=' + encodeURIComponent(source) + '&auth=signin#setup' });
     else clerk.mountSignIn($('signin'), { forceRedirectUrl: returnUrl, signUpUrl: location.origin + location.pathname + '?source=' + encodeURIComponent(source) + '&auth=signup#setup' });
     message('Verify your email to continue. Dashboard access requires verified ownership of each sauna.');
     $('signin').scrollIntoView?.({ block: 'nearest' }); return;
   }
+  await api('/api/accounts/register', {accountType:'owner',source:'website'});
   await refresh(); $('welcome').classList.add('hidden'); $('workspace').classList.remove('hidden'); message('Signed in. Claim or verify your sauna to unlock its dashboard.');
 }
 async function refresh() {
@@ -57,9 +50,9 @@ async function refresh() {
     const panel = node('section', '', 'card section'); panel.append(node('h3', place.name), node('p', `${place.completed} of ${place.total} setup checks complete`));
     const progress = document.createElement('progress'); progress.max = place.total; progress.value = place.completed; progress.setAttribute('aria-label', 'Location setup progress'); panel.append(progress);
     const list = node('ul', ''); for (const check of place.checks) list.append(node('li', `${check.done ? '✓' : '○'} ${check.label}${check.recommended ? ' (recommended)' : ''}`)); panel.append(list);
-    panel.append(node('p', 'Listing review: ' + place.reviewStatus));
+    panel.append(node('p', 'Sauna review: ' + place.reviewStatus));
     if (place.reviewFeedback) panel.append(node('p', place.reviewFeedback, 'notice'));
-    if (!place.checks.find(c => c.id === 'verification').done) panel.append(node('p', place.reviewStatus === 'rejected' ? 'Please contact hello@seana.ie to correct your submission before another review.' : 'Your location is awaiting review. Access stays restricted until ownership is verified.'));
+    if (!place.checks.find(c => c.id === 'verification').done) panel.append(node('p', place.reviewStatus === 'rejected' ? 'Please contact hello@seana.ie to correct your submission before another review.' : 'Your sauna is awaiting review and is not visible in the app. The seána team will check that it is real and that you are authorised to manage it. Once approved, you can update its details in your dashboard.'));
     else {
       const link = node('a', 'Edit details in dashboard', 'btn secondary'); link.href = dashboardUrl; panel.append(link);
       if (features.paymentsEnabled && place.role === 'owner' && !place.checks.find(c => c.id === 'payments').done) panel.append(action('Connect Stripe payments', async () => {
@@ -67,7 +60,7 @@ async function refresh() {
         const url = new URL(result.url); if (url.protocol !== 'https:' || !(url.hostname === 'stripe.com' || url.hostname.endsWith('.stripe.com'))) throw new Error('Unexpected payment setup link. Contact support.'); message('Your secure Stripe setup link is ready. Complete setup there, then return here and refresh.'); const link = node('a', 'Continue to Stripe', 'btn'); link.href = url.href; link.target = '_blank'; link.rel = 'noopener noreferrer'; panel.append(link);
       }));
     }
-    if (features.paymentsEnabled && place.ready && place.role === 'owner') panel.append(action('Finish business setup', async () => { await api('/api/onboarding/complete', {}); message('Business setup completed. Open your dashboard to manage bookings.'); }));
+    if (features.paymentsEnabled && place.ready && place.role === 'owner') panel.append(action('Finish business setup', async () => { await api('/api/onboarding/complete', {saunaId:place.saunaId}); location.href=dashboardUrl; }));
     root.append(panel);
   }
   if (!setup.locations.length && !(state.claims || []).length) root.append(node('p', 'Start by finding your sauna below.'));
@@ -105,9 +98,11 @@ $('identity-retry').addEventListener('click', () => openIdentity());
 $('refresh').addEventListener('click', () => busy($('refresh'), refresh));
 $('signout').addEventListener('click', () => busy($('signout'), async () => { await clerk.signOut(); location.reload(); }));
 $('search-form').addEventListener('submit', e => { e.preventDefault(); const button = e.currentTarget.querySelector('button'); busy(button, async () => { const results = await api('/api/business/find-sauna', { name: $('search').value }); $('results').replaceChildren(); $('claim').replaceChildren(); if (!results.length) $('results').append(node('p', 'No matches. Try another part of the name, or add your location below.')); for (const sauna of results) { const row = node('div', '', 'result'); row.append(node('span', `${sauna.name} · ${sauna.county || sauna.location || ''}`), action('This is my sauna', () => claimOptions(sauna))); $('results').append(row); } }); });
-$('new-form').addEventListener('submit', e => { e.preventDefault(); const form = e.currentTarget, button = form.querySelector('button'); busy(button, async () => { const body = Object.fromEntries(new FormData(form)); for (const key of ['lat', 'lng', 'session_price', 'max_capacity']) { if (body[key] === '') delete body[key]; else body[key] = Number(body[key]); } await api('/api/onboarding/new-location', { ...body, source }); form.reset(); $('new-location').open = false; await refresh(); message('Your location has been submitted for review. Your setup checklist is saved above.'); }); });
+let newLocationPicker;
+if(window.createSaunaLocationPicker){newLocationPicker=createSaunaLocationPicker({getAddress:()=>['name','location','county'].map(key=>$('new-form').elements.namedItem(key)?.value||'').filter(Boolean).join(', ')});$('new-location-map').append(newLocationPicker);}
+$('new-form').addEventListener('submit', e => { e.preventDefault(); const form = e.currentTarget, button = form.querySelector('button[type=submit]'); busy(button, async () => { newLocationPicker?.validate(); const body = Object.fromEntries(new FormData(form)); for (const key of ['lat', 'lng', 'session_price', 'max_capacity']) { if (body[key] === '') delete body[key]; else body[key] = Number(body[key]); } const created=await api('/api/onboarding/new-location', { ...body, source }); form.reset(); newLocationPicker?.resetPin(); $('new-location').open = false; location.href=dashboardUrl+'?saunaId='+encodeURIComponent(created.saunaId); }); });
 // No form contents or authentication tokens are saved in browser storage.
-const identityReady = openIdentity();
+const identityReady = window.SeanaPortalRedirecting ? Promise.resolve() : openIdentity();
 
 $('share-owner').addEventListener('click', () => busy($('share-owner'), async () => {
   const url = location.origin + location.pathname + '?source=owner_referral';
