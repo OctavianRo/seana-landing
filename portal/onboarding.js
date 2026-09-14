@@ -27,7 +27,7 @@ async function begin(mode = 'signin') {
     if (!config.clerkPublishableKey) throw new Error('Secure sign-in is unavailable. Please contact hello@seana.ie.');
     clerk = await window.SeanaAuth.load(config.clerkPublishableKey);
   }
-  if (!clerk.user) {
+  if (!clerk.user || clerk.session?.status !== 'active') {
     const returnUrl = mode==='signup' ? location.origin+dashboardUrl : location.origin + location.pathname + '?source=' + encodeURIComponent(source) + '#setup';
     clerk.unmountSignIn?.($('signin')); clerk.unmountSignUp?.($('signin'));
     if (mode === 'signup') clerk.mountSignUp($('signin'), { forceRedirectUrl: returnUrl, signInUrl: location.origin + location.pathname + '?source=' + encodeURIComponent(source) + '&auth=signin#setup' });
