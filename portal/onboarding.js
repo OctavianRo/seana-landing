@@ -10,11 +10,26 @@ const source = ['website', 'owner_referral', 'outreach', 'event'].includes(incom
 function node(tag, text, className) { const el = document.createElement(tag); el.textContent = text; if (className) el.className = className; return el; }
 function message(text) { $('message').replaceChildren(...(text ? [node('p', text, 'notice')] : [])); }
 async function api(path, body) {
-  const token = await clerk?.session?.getToken();
   const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 15000);
-  let response; try { response = await fetch(API + path, { method: body ? 'POST' : 'GET', headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}), signal: controller.signal }); } finally { clearTimeout(timeout); }
+  let response; try { response = await window.SeanaSession.request(API + path, { method: body ? 'POST' : 'GET', headers: { ...(body ? { 'Content-Type': 'application/json' } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}), signal: controller.signal }, clerk, showSessionRecovery); } finally { clearTimeout(timeout); }
   if (!response.headers.get('content-type')?.includes('application/json')) throw new Error('Owner setup is not available yet. Please contact hello@seana.ie and we’ll help you get started.');
-  const result = await response.json(); if (!response.ok) throw new Error(response.status === 401 ? 'We couldn’t verify your account session. Try again, or contact hello@seana.ie.' : result.error || 'Please try again.'); return result;
+  const result = await response.json(); if (!response.ok) throw new Error(response.status === 401 ? 'Your session could not be verified. Sign out and try again. If it happens again, contact hello@seana.ie.' : result.error || 'Please try again.'); return result;
+}
+function clearOwnerWorkspace() {
+  $('workspace').classList.add('hidden'); $('welcome').classList.remove('hidden');
+  for (const id of ['status','results','claim']) $(id).replaceChildren();
+  $('new-form').reset?.();
+}
+function showSessionRecovery() {
+  clearOwnerWorkspace();
+  $('signin').replaceChildren(); $('signin').classList.add('load-failed');
+  $('identity-signout').classList.remove('hidden');
+}
+async function resetOwnerSession(button) {
+  if(button.disabled)return; button.disabled=true;
+  try { await window.SeanaSession.signOut(clerk,clearOwnerWorkspace,location.pathname+'?source='+encodeURIComponent(source)+'&auth=signin'); }
+  catch { showSessionRecovery(); message('We couldn’t finish signing you out. Check your connection and try again.'); }
+  finally { button.disabled=false; }
 }
 function action(label, fn) { const button = node('button', label); button.type = 'button'; button.addEventListener('click', () => busy(button, fn)); return button; }
 async function busy(button, fn) { if(button.disabled)return; button.disabled = true; message(''); try { await fn(); } catch (error) { message(error.name === 'AbortError' ? 'This is taking longer than expected. Please try again.' : error instanceof TypeError ? 'We couldn’t connect to owner setup. Please try again, or contact hello@seana.ie for help.' : error.message || 'Something went wrong. Please try again.'); } finally { button.disabled = false; } }
@@ -96,8 +111,9 @@ async function openIdentity(mode = identityMode) {
   finally { identityOpening = false; retry.disabled = false; }
 }
 $('identity-retry').addEventListener('click', () => openIdentity());
+$('identity-signout').addEventListener('click', () => resetOwnerSession($('identity-signout')));
 $('refresh').addEventListener('click', () => busy($('refresh'), refresh));
-$('signout').addEventListener('click', () => busy($('signout'), async () => { await clerk.signOut(); location.reload(); }));
+$('signout').addEventListener('click', () => resetOwnerSession($('signout')));
 $('search-form').addEventListener('submit', e => { e.preventDefault(); const button = e.currentTarget.querySelector('button'); busy(button, async () => { const results = await api('/api/business/find-sauna', { name: $('search').value }); $('results').replaceChildren(); $('claim').replaceChildren(); if (!results.length) $('results').append(node('p', 'No matches. Try another part of the name, or add your location below.')); for (const sauna of results) { const row = node('div', '', 'result'); row.append(node('span', `${sauna.name} · ${sauna.county || sauna.location || ''}`), action('This is my sauna', () => claimOptions(sauna))); $('results').append(row); } }); });
 let newLocationPicker;
 if(window.createSaunaLocationPicker){newLocationPicker=createSaunaLocationPicker({getAddress:()=>['name','location','county'].map(key=>$('new-form').elements.namedItem(key)?.value||'').filter(Boolean).join(', ')});$('new-location-map').append(newLocationPicker);}
