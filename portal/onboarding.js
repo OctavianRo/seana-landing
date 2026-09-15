@@ -41,17 +41,20 @@ async function begin(mode = 'signin') {
     if (config.ownerOnboardingEnabled !== true) throw new Error('Owner setup is being prepared. Please contact hello@seana.ie and we’ll help you get started.');
     if (!config.clerkPublishableKey) throw new Error('Secure sign-in is unavailable. Please contact hello@seana.ie.');
     clerk = await window.SeanaAuth.load(config.clerkPublishableKey);
-    observedSession=clerk.session?.id;clerk.addListener?.(({session})=>{if(session?.id===observedSession)return;observedSession=session?.id;clearOwnerWorkspace();openIdentity('signin');});
+    observedSession=sessionKey(clerk.session);clerk.addListener?.(({session})=>{const key=sessionKey(session);if(key===observedSession)return;observedSession=key;clearOwnerWorkspace();openIdentity();});
   }
   if (!clerk.user || clerk.session?.status !== 'active') {
     const returnUrl = location.origin + location.pathname + '?source=' + encodeURIComponent(source) + '#setup';
     clerk.unmountSignIn?.($('signin')); clerk.unmountSignUp?.($('signin'));
     if (mode === 'signup') clerk.mountSignUp($('signin'), { forceRedirectUrl: returnUrl, signInUrl: location.origin + location.pathname + '?source=' + encodeURIComponent(source) + '&auth=signin#setup' });
-    else clerk.mountSignIn($('signin'), { forceRedirectUrl: returnUrl, signUpUrl: location.origin + location.pathname + '?source=' + encodeURIComponent(source) + '&auth=signup#setup' });
+    else clerk.mountSignIn($('signin'), { forceRedirectUrl: location.origin + dashboardUrl, signUpUrl: location.origin + location.pathname + '?source=' + encodeURIComponent(source) + '&auth=signup#setup' });
     return;
   }
+  const epoch=sessionEpoch;
   await api('/api/accounts/register', {accountType:'owner',source:'website'});
-  await refresh(); $('welcome').classList.add('hidden'); $('workspace').classList.remove('hidden'); message('Signed in. Claim or verify your sauna to unlock its dashboard.');
+  if(epoch!==sessionEpoch)return;
+  if(mode==='signin'){location.replace(dashboardUrl);return;}
+  await refresh(); if(epoch!==sessionEpoch)return; $('welcome').classList.add('hidden'); $('workspace').classList.remove('hidden'); message('Signed in. Claim or verify your sauna to unlock its dashboard.');
 }
 async function refresh() {
   const epoch=sessionEpoch; const state = await api('/api/onboarding/state'); const setup={locations:state.setup||[]}; if(epoch!==sessionEpoch)return;
@@ -92,10 +95,11 @@ async function claimOptions(sauna) {
   }
 }
 document.querySelectorAll('a[href="/portal/dashboard.html"]').forEach(link => { link.href = dashboardUrl; });
-let identityOpening = false;
+function sessionKey(session){return session ? session.id+':'+session.status : 'signed-out';}
+let identityOpening = false, identityPending = false;
 const identityMode = new URLSearchParams(location.search).get('auth') === 'signin' ? 'signin' : 'signup';
 async function openIdentity(mode = identityMode) {
-  if (identityOpening) return;
+  if (identityOpening) { identityPending=true; return; }
   identityOpening = true;
   const retry = $('identity-retry');
   retry.classList.add('hidden');
@@ -106,7 +110,7 @@ async function openIdentity(mode = identityMode) {
     message(error.name === 'AbortError' ? 'Sign-in timed out. Please try again.' : error instanceof TypeError ? 'We couldn’t connect to owner setup. Please try again, or contact hello@seana.ie.' : error.message);
     retry.classList.remove('hidden');
   }
-  finally { identityOpening = false; retry.disabled = false; }
+  finally { identityOpening = false; retry.disabled = false; if(identityPending){identityPending=false;await openIdentity();} }
 }
 $('identity-retry').addEventListener('click', () => openIdentity());
 $('identity-signout').addEventListener('click', () => resetOwnerSession($('identity-signout')));
