@@ -44,7 +44,7 @@ async function begin(mode = 'signin') {
     observedSession=sessionKey(clerk.session);clerk.addListener?.(({session})=>{const key=sessionKey(session);if(key===observedSession)return;observedSession=key;clearOwnerWorkspace();openIdentity();});
   }
   if (!clerk.user || clerk.session?.status !== 'active') {
-    const returnUrl = location.origin + location.pathname + '?source=' + encodeURIComponent(source) + '#setup';
+    const returnUrl = location.origin + dashboardUrl;
     clerk.unmountSignIn?.($('signin')); clerk.unmountSignUp?.($('signin'));
     if (mode === 'signup') clerk.mountSignUp($('signin'), { forceRedirectUrl: returnUrl, signInUrl: location.origin + location.pathname + '?source=' + encodeURIComponent(source) + '&auth=signin#setup' });
     else clerk.mountSignIn($('signin'), { forceRedirectUrl: location.origin + dashboardUrl, signUpUrl: location.origin + location.pathname + '?source=' + encodeURIComponent(source) + '&auth=signup#setup' });
@@ -53,7 +53,7 @@ async function begin(mode = 'signin') {
   const epoch=sessionEpoch;
   await api('/api/accounts/register', {accountType:'owner',source:'website'});
   if(epoch!==sessionEpoch)return;
-  if(mode==='signin'){location.replace(dashboardUrl);return;}
+  if(new URLSearchParams(location.search).get('setup')!=='1'){location.replace(dashboardUrl);return;}
   await refresh(); if(epoch!==sessionEpoch)return; $('welcome').classList.add('hidden'); $('workspace').classList.remove('hidden'); message('Signed in. Claim or verify your sauna to unlock its dashboard.');
 }
 async function refresh() {
