@@ -4,7 +4,7 @@ const localApp = ['localhost', '127.0.0.1'].includes(location.hostname) && locat
 const API = localApp || location.origin === APP_ORIGIN ? '' : APP_ORIGIN;
 const dashboardUrl = '/portal/dashboard.html';
 const $ = id => document.getElementById(id);
-let clerk, features = {};
+let clerk, features = {}, sessionEpoch=0, observedSession;
 const incomingSource = new URLSearchParams(location.search).get('source');
 const source = ['website', 'owner_referral', 'outreach', 'event'].includes(incomingSource) ? incomingSource : 'direct';
 function node(tag, text, className) { const el = document.createElement(tag); el.textContent = text; if (className) el.className = className; return el; }
@@ -13,10 +13,10 @@ async function api(path, body) {
   const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 15000);
   let response; try { response = await window.SeanaSession.request(API + path, { method: body ? 'POST' : 'GET', headers: { ...(body ? { 'Content-Type': 'application/json' } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}), signal: controller.signal }, clerk, showSessionRecovery); } finally { clearTimeout(timeout); }
   if (!response.headers.get('content-type')?.includes('application/json')) throw new Error('Owner setup is not available yet. Please contact hello@seana.ie and we’ll help you get started.');
-  const result = await response.json(); if (!response.ok) throw new Error(response.status === 401 ? 'Your session could not be verified. Sign out and try again. If it happens again, contact hello@seana.ie.' : result.error || 'Please try again.'); return result;
+  const result = await response.json(); if(result.code==='mfa_required'){await window.SeanaOwnerSecurity.verify(clerk);await api('/api/onboarding/security');throw Error('Security verified. Please try the action again.');} if (!response.ok) throw new Error(response.status === 401 ? 'Your session could not be verified. Sign out and try again. If it happens again, contact hello@seana.ie.' : result.error || 'Please try again.'); return result;
 }
 function clearOwnerWorkspace() {
-  $('workspace').classList.add('hidden'); $('welcome').classList.remove('hidden');
+  sessionEpoch++; $('workspace').classList.add('hidden'); $('welcome').classList.remove('hidden');
   for (const id of ['status','results','claim']) $(id).replaceChildren();
   $('new-form').reset?.();
 }
@@ -41,9 +41,10 @@ async function begin(mode = 'signin') {
     if (config.ownerOnboardingEnabled !== true) throw new Error('Owner setup is being prepared. Please contact hello@seana.ie and we’ll help you get started.');
     if (!config.clerkPublishableKey) throw new Error('Secure sign-in is unavailable. Please contact hello@seana.ie.');
     clerk = await window.SeanaAuth.load(config.clerkPublishableKey);
+    observedSession=clerk.session?.id;clerk.addListener?.(({session})=>{if(session?.id===observedSession)return;observedSession=session?.id;clearOwnerWorkspace();openIdentity('signin');});
   }
   if (!clerk.user || clerk.session?.status !== 'active') {
-    const returnUrl = mode==='signup' ? location.origin+dashboardUrl : location.origin + location.pathname + '?source=' + encodeURIComponent(source) + '#setup';
+    const returnUrl = location.origin + location.pathname + '?source=' + encodeURIComponent(source) + '#setup';
     clerk.unmountSignIn?.($('signin')); clerk.unmountSignUp?.($('signin'));
     if (mode === 'signup') clerk.mountSignUp($('signin'), { forceRedirectUrl: returnUrl, signInUrl: location.origin + location.pathname + '?source=' + encodeURIComponent(source) + '&auth=signin#setup' });
     else clerk.mountSignIn($('signin'), { forceRedirectUrl: returnUrl, signUpUrl: location.origin + location.pathname + '?source=' + encodeURIComponent(source) + '&auth=signup#setup' });
@@ -53,11 +54,12 @@ async function begin(mode = 'signin') {
   await refresh(); $('welcome').classList.add('hidden'); $('workspace').classList.remove('hidden'); message('Signed in. Claim or verify your sauna to unlock its dashboard.');
 }
 async function refresh() {
-  const [state, setup] = await Promise.all([api('/api/onboarding/state'), api('/api/onboarding/readiness')]);
+  const epoch=sessionEpoch; const state = await api('/api/onboarding/state'); const setup={locations:state.setup||[]}; if(epoch!==sessionEpoch)return;
   const root = $('status'); root.replaceChildren();
+  root.append(action('Account security — set up two-factor authentication',async()=>window.SeanaOwnerSecurity.openAccount(clerk)),action('Verify for payments',async()=>{await window.SeanaOwnerSecurity.verify(clerk);await api('/api/onboarding/security');await refresh();}));
   for (const claim of state.claims || []) {
     const panel = node('section', '', 'card section'); panel.append(node('h3', 'Ownership request'), node('p', `${claim.sauna_id}: ${String(claim.status).replaceAll('_', ' ')}`));
-    if (claim.status === 'code_sent') panel.append(codeForm(claim.id));
+
     if (claim.status === 'rejected') panel.append(node('p', 'Please contact hello@seana.ie for help before submitting again.'));
     root.append(panel);
   }
@@ -75,14 +77,10 @@ async function refresh() {
         const url = new URL(result.url); if (url.protocol !== 'https:' || !(url.hostname === 'stripe.com' || url.hostname.endsWith('.stripe.com'))) throw new Error('Unexpected payment setup link. Contact support.'); message('Your secure Stripe setup link is ready. Complete setup there, then return here and refresh.'); const link = node('a', 'Continue to Stripe', 'btn'); link.href = url.href; link.target = '_blank'; link.rel = 'noopener noreferrer'; panel.append(link);
       }));
     }
-    if (features.paymentsEnabled && place.ready && place.role === 'owner') panel.append(action('Finish business setup', async () => { await api('/api/onboarding/complete', {saunaId:place.saunaId}); location.href=dashboardUrl; }));
+    if (features.paymentsEnabled && place.ready && place.role === 'owner') panel.append(action('Finish business setup', async () => { await api('/api/onboarding/complete', {saunaId:place.saunaId}); await refresh(); }));
     root.append(panel);
   }
   if (!setup.locations.length && !(state.claims || []).length) root.append(node('p', 'Start by finding your sauna below.'));
-}
-function codeForm(claimId) {
-  const form = document.createElement('form'), label = node('label', 'Verification code'), input = document.createElement('input'); input.required = true; input.pattern = '[0-9]{6}'; input.inputMode = 'numeric'; input.autocomplete = 'one-time-code'; input.maxLength = 6; label.append(input); const button = node('button', 'Verify ownership'); form.append(label, button);
-  form.addEventListener('submit', e => { e.preventDefault(); busy(button, async () => { await api(`/api/onboarding/claim/${encodeURIComponent(claimId)}/verify`, { code: input.value }); await refresh(); $('claim').replaceChildren(); message('Ownership verified. Continue your setup checklist above.'); }); }); return form;
 }
 async function claimOptions(sauna) {
   const data = await api(`/api/onboarding/claim-options/${encodeURIComponent(sauna.id)}`); const root = $('claim'); root.replaceChildren(node('h3', `Verify ${sauna.name}`));
@@ -90,7 +88,7 @@ async function claimOptions(sauna) {
     const form = document.createElement('form'); form.append(node('p', option.label)); let input;
     if (option.method === 'admin_review') { const label = node('label', 'How can we confirm you represent this sauna?'); input = document.createElement('textarea'); input.required = true; input.maxLength = 500; input.placeholder = 'Your role and a public business reference. Do not include passwords, banking details or identity documents.'; label.append(input); form.append(label); }
     const button = node('button', option.instant ? 'Verify with my business email' : option.method === 'listing_email' ? 'Send verification code' : 'Request review'); form.append(button);
-    form.addEventListener('submit', e => { e.preventDefault(); busy(button, async () => { const result = await api('/api/onboarding/claim', { saunaId: sauna.id, source, method: option.method, ...(input ? { evidence: { explanation: input.value } } : {}) }); root.replaceChildren(); await refresh(); message(result.status === 'approved' ? 'Ownership verified. Continue setup above.' : result.status === 'code_sent' ? `Code sent to ${result.sentTo}. Enter it above.` : 'Your ownership request is saved for review. Check back here for updates.'); }); }); root.append(form);
+    form.addEventListener('submit', e => { e.preventDefault(); busy(button, async () => { const result = await api('/api/onboarding/claim', { saunaId: sauna.id, source, method: option.method, ...(input ? { evidence: { explanation: input.value } } : {}) }); root.replaceChildren(); await refresh(); message('Your latest review status is shown above.'); }); }); root.append(form);
   }
 }
 document.querySelectorAll('a[href="/portal/dashboard.html"]').forEach(link => { link.href = dashboardUrl; });
@@ -117,7 +115,7 @@ $('signout').addEventListener('click', () => resetOwnerSession($('signout')));
 $('search-form').addEventListener('submit', e => { e.preventDefault(); const button = e.currentTarget.querySelector('button'); busy(button, async () => { const results = await api('/api/business/find-sauna', { name: $('search').value }); $('results').replaceChildren(); $('claim').replaceChildren(); if (!results.length) $('results').append(node('p', 'No matches. Try another part of the name, or add your location below.')); for (const sauna of results) { const row = node('div', '', 'result'); row.append(node('span', `${sauna.name} · ${sauna.county || sauna.location || ''}`), action('This is my sauna', () => claimOptions(sauna))); $('results').append(row); } }); });
 let newLocationPicker;
 if(window.createSaunaLocationPicker){newLocationPicker=createSaunaLocationPicker({getAddress:()=>['name','location','county'].map(key=>$('new-form').elements.namedItem(key)?.value||'').filter(Boolean).join(', ')});$('new-location-map').append(newLocationPicker);}
-$('new-form').addEventListener('submit', e => { e.preventDefault(); const form = e.currentTarget, button = form.querySelector('button[type=submit]'); busy(button, async () => { newLocationPicker?.validate(); const body = Object.fromEntries(new FormData(form)); for (const key of ['lat', 'lng', 'session_price', 'max_capacity']) { if (body[key] === '') delete body[key]; else body[key] = Number(body[key]); } const created=await api('/api/onboarding/new-location', { ...body, source }); form.reset(); newLocationPicker?.resetPin(); $('new-location').open = false; location.href=dashboardUrl+'?saunaId='+encodeURIComponent(created.saunaId); }); });
+$('new-form').addEventListener('submit', e => { e.preventDefault(); const form = e.currentTarget, button = form.querySelector('button[type=submit]'); busy(button, async () => { newLocationPicker?.validate(); const body = Object.fromEntries(new FormData(form)); for (const key of ['lat', 'lng', 'session_price', 'max_capacity']) { if (body[key] === '') delete body[key]; else body[key] = Number(body[key]); } const created=await api('/api/onboarding/new-location', { ...body, source }); form.reset(); newLocationPicker?.resetPin(); $('new-location').open = false; await refresh(); message('Your latest review status is shown above.'); }); });
 // No form contents or authentication tokens are saved in browser storage.
 const identityReady = window.SeanaPortalRedirecting ? Promise.resolve() : openIdentity();
 
