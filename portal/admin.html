@@ -108,7 +108,7 @@
     <p class="sub" id="subtitle"></p>
     <div class="tabs">
       <button class="tab active" data-view="directory">All saunas</button>
-      <button class="tab" data-view="photos">Photo review</button>
+      <button class="tab" data-view="changes">Listing changes</button><button class="tab" data-view="photos">Photo review</button>
       <button class="tab" data-view="claims">Ownership claims</button>
       <button class="tab" data-view="listings">Sauna review</button>
       <button class="tab" data-view="onboarding">Owner onboarding</button>
@@ -263,6 +263,7 @@ async function render() {
   $('content').innerHTML = '<div class="spin"></div>';
   try {
     if (view === 'customers' || view === 'owners') return await renderRegistrations();
+    if (view === 'changes') return await renderListingChanges();
     if (view === 'photos') return await renderPhotos();
     if (view === 'directory') return await renderDirectory();
     if (view === 'claims')   return await renderClaims();
@@ -292,6 +293,17 @@ async function renderOnboarding(offset = 0) {
   $('content').innerHTML = `<h2>Help owners reach their first booking</h2><p>Oldest unfinished setups appear first. Use the review queues below to accept or reject owner submissions. A saved step is progress, not proof of booking readiness.</p><div class="actions"><button class="act" onclick="document.querySelector('[data-view=listings]').click()">Review new saunas</button><button class="act" onclick="document.querySelector('[data-view=claims]').click()">Review ownership claims</button><button class="act" onclick="render()">Refresh submissions</button></div><label>Filter this page<input id="onboarding-search" type="search" placeholder="Business name or email"></label><div style="overflow:auto"><table><thead><tr><th>Business</th><th>Contact</th><th>Progress / source</th><th>Locations / verified</th><th>Pending claims</th><th>Last setup activity</th></tr></thead><tbody id="onboarding-rows"></tbody></table></div><div id="onboarding-pages"></div>`;
   const draw = () => { const q = $('onboarding-search').value.toLowerCase(); $('onboarding-rows').innerHTML = rows.filter(o => `${o.name} ${o.billing_email}`.toLowerCase().includes(q)).map(o => `<tr><td>${esc(o.name)}<br>${esc(o.status)}</td><td>${esc(o.billing_email || '—')}</td><td>${esc(o.completed_at ? 'Setup completed' : o.step)}<br>${esc(o.source)}</td><td>${esc(o.locations)} / ${esc(o.verified_locations)}</td><td>${esc(o.pending_claims)}</td><td>${esc(new Date(o.updated_at || o.created_at).toLocaleDateString('en-IE'))}</td></tr>`).join('') || '<tr><td colspan="6">No matching businesses</td></tr>'; }; $('onboarding-search').addEventListener('input', draw); draw();
   for (const [label, next] of [['Previous', offset > 0 ? Math.max(0, offset - 100) : null], ['Next', result.body.nextOffset]]) { if (next === null) continue; const b = document.createElement('button'); b.textContent = label; b.onclick = () => renderOnboarding(next).catch(e => { $('content').textContent = e.message; }); $('onboarding-pages').append(b); }
+}
+
+async function renderListingChanges(){
+ const response=await api('/api/admin/listing-changes');if(!response.ok)throw Error(response.body?.error||'Could not load changes');if(view!=='changes')return;
+ const root=$('content');root.replaceChildren();const intro=document.createElement('p');intro.textContent='Public listing edits stay unpublished until approved. Compare the current and proposed values below. Photos have a separate review queue.';root.append(intro);
+ if(!response.body.requests.length){const empty=document.createElement('p');empty.textContent='No listing changes awaiting review.';root.append(empty);}
+ for(const request of response.body.requests){const card=document.createElement('section');card.className='row';const title=document.createElement('h2');title.textContent=request.sauna_name;const contact=document.createElement('p');contact.textContent=request.submitted_email+' · '+new Date(request.submitted_at).toLocaleString('en-IE');const table=document.createElement('table');const head=document.createElement('tr');for(const label of ['Detail','Current','Proposed']){const cell=document.createElement('th');cell.textContent=label;head.append(cell);}table.append(head);
+ for(const [key,value]of Object.entries(request.changes)){const row=document.createElement('tr');for(const item of [key.replaceAll('_',' '),request.previous_values[key],value]){const cell=document.createElement('td');cell.textContent=item==null?'Not set':typeof item==='object'?JSON.stringify(item):String(item);row.append(cell);}table.append(row);}
+ const reason=document.createElement('textarea');reason.placeholder='Reason for rejection (required if rejecting)';reason.setAttribute('aria-label','Review reason');reason.maxLength=1000;const status=document.createElement('p');status.setAttribute('role','status');const approve=document.createElement('button'),reject=document.createElement('button');approve.textContent='Approve changes';reject.textContent='Reject changes';approve.className=reject.className='act';approve.disabled=reject.disabled=!me.permissions.canApproveListings;
+ async function review(decision){if(decision==='rejected'&&!reason.value.trim()){status.textContent='Add a reason so the owner can correct the details.';return;}approve.disabled=reject.disabled=true;try{const result=await api('/api/admin/listing-changes/'+encodeURIComponent(request.id)+'/review',{method:'POST',body:JSON.stringify({status:decision,reason:reason.value})});if(!result.ok)throw Error(result.body?.error||'Could not review changes');if(view==='changes')await render();}catch(error){status.textContent=error.message;approve.disabled=reject.disabled=false;}}
+ approve.onclick=()=>review('approved');reject.onclick=()=>review('rejected');card.append(title,contact,table,reason,status,approve,reject);root.append(card);}
 }
 
 async function renderPhotos(){
