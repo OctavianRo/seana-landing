@@ -68,6 +68,17 @@
 #clerk-signin{min-width:0;width:100%}
 #clerk-signin .cl-rootBox,#clerk-signin .cl-cardBox,#clerk-signin .cl-card{width:100%;max-width:100%;min-width:0;box-sizing:border-box}
 @media(max-width:480px){#signin{padding:16px}#signin>.card{padding:16px}#clerk-signin .cl-card{padding:20px 16px}}
+/* Keep administrator sign-in legible against the dark portal. */
+#signin>.card>p{color:#fff!important}
+#clerk-signin .cl-headerTitle,#clerk-signin .cl-headerSubtitle,
+#clerk-signin .cl-formFieldLabel,#clerk-signin .cl-dividerText,
+#clerk-signin .cl-socialButtonsBlockButtonText,#clerk-signin .cl-footerActionText,
+#clerk-signin .cl-footerActionLink,#clerk-signin .cl-formFieldAction,
+#clerk-signin .cl-identityPreviewText,#clerk-signin .cl-formFieldInput,
+#clerk-signin .cl-formFieldInputShowPasswordButton{color:#fff!important}
+#clerk-signin .cl-socialButtonsBlockButton{background:#262a31!important;color:#fff!important;border:1px solid #626975!important}
+#clerk-signin .cl-formFieldInput{background:#0f1114!important;border-color:#626975!important;caret-color:#fff}
+#clerk-signin .cl-formFieldInput::placeholder{color:#d0d2d5!important;opacity:1}
 </style>
 <link rel="icon" type="image/png" sizes="128x128" href="/portal/favicon.png?v=3"><link rel="icon" type="image/svg+xml" href="/portal/favicon.svg?v=3"></head>
 <body>
