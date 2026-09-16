@@ -5,6 +5,7 @@
 (() => {
   if (window.SeanaPortalRedirecting) return;
   const destination = new URL('/portal/dashboard.html', location.origin);
+  destination.searchParams.set('v', 'owner-portal-20260916');
   const incoming = new URLSearchParams(location.search);
   const callback = location.hash.startsWith('#/sso-callback');
   destination.searchParams.set('auth', incoming.get('auth') === 'signin' ? 'signin' : 'signup');
@@ -14,7 +15,7 @@
     const split = location.hash.indexOf('?');
     const params = new URLSearchParams(split < 0 ? '' : location.hash.slice(split + 1));
     for (const key of [...params.keys()]) {
-      if (/redirect_url$/.test(key)) params.set(key, destination.origin + destination.pathname);
+      if (/redirect_url$/.test(key)) params.set(key, destination.origin + destination.pathname + '?v=owner-portal-20260916');
     }
     destination.hash = '/sso-callback' + (params.size ? '?' + params.toString() : '');
   }

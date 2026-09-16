@@ -78,12 +78,12 @@ textarea{width:100%;padding:12px;border-radius:9px;border:1px solid var(--line);
     // One page, both doors: ?auth=signup opens account creation, anything else
     // opens sign-in. Clerk's own toggle links point back here, so an owner is
     // never handed a second, different-looking sign-in form on another page.
-    const identityUrl=mode=>location.origin+location.pathname+'?auth='+mode;
+    const identityUrl=mode=>location.origin+location.pathname+'?v=owner-portal-20260916&auth='+mode;
     const identityMode=()=>new URLSearchParams(location.search).get('auth')==='signup'?'signup':'signin';
     function mountIdentity(){
       const mode=identityMode(),target=$('clerk-signin');
       clerk.unmountSignIn?.(target);clerk.unmountSignUp?.(target);target.replaceChildren();
-      const options={forceRedirectUrl:location.origin+location.pathname};
+      const options={forceRedirectUrl:location.origin+location.pathname+'?v=owner-portal-20260916'};
       if(mode==='signup')clerk.mountSignUp(target,{...options,signInUrl:identityUrl('signin')});
       else clerk.mountSignIn(target,{...options,signUpUrl:identityUrl('signup')});
       const toggle=$('owner-signup');toggle.href=identityUrl(mode==='signup'?'signin':'signup');
@@ -96,7 +96,7 @@ textarea{width:100%;padding:12px;border-radius:9px;border:1px solid var(--line);
       activePage='overview';
       const registration=await api('/api/accounts/register',{method:'POST',body:JSON.stringify({accountType:'owner',source:'website'})});if(!registration.ok)throw new Error('Could not save your owner account. Please reload to try again.');
       if(sessionVersion!==workspaceVersion||clerk.session?.id!==session.id)return;
-      const returning=new URLSearchParams(location.search);if(returning.has('connect'))activePage='payments';await loadWorkspace(returning.get('saunaId'));if(sessionVersion<=workspaceVersion&&clerk.session?.id===session.id)history.replaceState(null,'',location.pathname);
+      const returning=new URLSearchParams(location.search);if(returning.has('connect'))activePage='payments';await loadWorkspace(returning.get('saunaId'));if(sessionVersion<=workspaceVersion&&clerk.session?.id===session.id)history.replaceState(null,'',location.pathname+'?v=owner-portal-20260916');
     }
     async function boot(){if(window.SeanaPortalRedirecting)return;const retry=$('signin-retry');retry.classList.add('hidden');retry.disabled=true;$('clerk-signin').replaceChildren();show('loading');try{
       const response=await fetch(`${API_URL}/api/public-config`,{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!response.ok)throw new Error('Owner service is temporarily unavailable.');features=await response.json();
