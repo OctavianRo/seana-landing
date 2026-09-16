@@ -92,6 +92,7 @@ button.act.ap{background:#28683a;color:#fff}
 button.act.rj{background:#a33232;color:#fff}
 #content a{color:#fff!important;text-decoration:underline}
 input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid #ffb580;outline-offset:3px}
+#clerk-signin .cl-footerAction{display:none!important}
 </style>
 <link rel="icon" type="image/png" sizes="128x128" href="/portal/favicon.png?v=3"><link rel="icon" type="image/svg+xml" href="/portal/favicon.svg?v=3"></head>
 <body>
@@ -103,7 +104,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
     <div class="logo">seána</div>
     <p style="font-size:18px;font-weight:700;margin-bottom:6px">Admin</p>
     <p style="color:var(--text2);font-size:14px;margin-bottom:24px">
-      Sign in with your approved seána administrator account.
+      Sign in with your approved seána administrator account. Admin access is invitation-only; account creation is unavailable here.
     </p>
     <div id="clerk-signin"></div>
   </div>
@@ -124,6 +125,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
     <div class="topbar-logo">seána admin</div>
     <div style="display:flex;align-items:center;gap:12px">
       <span class="role" id="who"></span>
+      <button class="act ghost" onclick="window.SeanaOwnerSecurity.openAccount(clerk)">Account security</button>
       <button class="act ghost" onclick="signOut()">Sign out</button>
     </div>
   </div>
@@ -203,7 +205,11 @@ async function showSession(session) {
   $('content').replaceChildren();
   if (!session || session.status !== 'active') {
     show('signin');
-    clerk.mountSignIn($('clerk-signin'), { forceRedirectUrl: location.origin + location.pathname });
+    clerk.mountSignIn($('clerk-signin'), {
+      forceRedirectUrl: location.origin + location.pathname,
+      withSignUp: false, transferable: false,
+      appearance: { elements: { footerAction: { display: 'none' } } }
+    });
     return;
   }
   show('loading');
@@ -212,7 +218,7 @@ async function showSession(session) {
     if (generation !== authGeneration) return;
     if (!res.ok) {
       if (res.status === 401) return fail('Sign-in could not be verified', 'Try again, or sign out and use your approved administrator account. Your session may have expired.');
-      if (res.status === 403 && res.body?.code === 'mfa_required') return fail('Two-factor authentication required', 'Your account requires a second factor. Complete it in your account security settings.');
+      if (res.status === 403 && res.body?.code === 'mfa_required') return fail('Two-factor authentication required', 'Select Set up or verify two-factor authentication. In Account security, add an authenticator app, scan the QR code and enter its code. Save your backup codes privately. Then return here and select the same button to verify and open the admin portal.');
       if (res.status >= 500) return fail('Admin service temporarily unavailable', 'Your sign-in succeeded, but the server could not verify access. Please try again.');
       return fail('No admin access', 'This signed-in account is not authorised for administration. Choose Use another account, then continue with your nominated Google account. Owner signup never grants admin access.');
     }
