@@ -28,7 +28,7 @@
     await script(`https://${host}/npm/@clerk/clerk-js@6.32.0/dist/clerk.browser.js`, 'sha384-VBzJGwZSkIhWZ1Kvw328nLAQLxpWXrKFyB7Wp1H1CTE7vvxb86GpZDDvzq6YfW0e', key);
     if (!window.Clerk || !window.__internal_ClerkUICtor) throw new Error('Secure sign-in is unavailable. Please try again.');
     let timer;
-    try { await Promise.race([window.Clerk.load({ ui: { ClerkUI: window.__internal_ClerkUICtor }, appearance, localization: { unstable__errors: { form_identifier_exists__email_address: "An account with this email already exists. Sign in instead, or use Continue with Google if that is how you joined." } } }), new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Secure sign-in took too long to start. Please try again.')), 15000); })]); }
+    try { await Promise.race([window.Clerk.load({ ui: { ClerkUI: window.__internal_ClerkUICtor }, appearance, localization: { unstable__errors: { form_identifier_not_found: "No account was found for these details. Create an account first, then sign in.", form_identifier_exists__email_address: "An account with this email already exists. Sign in instead, or use Continue with Google if that is how you joined." } } }), new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Secure sign-in took too long to start. Please try again.')), 15000); })]); }
     finally { clearTimeout(timer); }
     return window.Clerk;
   }

@@ -90,7 +90,7 @@
     <div class="logo">seána</div>
     <p id="denied-title" style="font-size:18px;font-weight:700;margin-bottom:10px"></p>
     <p id="denied-body" style="color:var(--text2);font-size:14px;line-height:1.6;margin-bottom:22px"></p>
-    <button class="act" onclick="location.reload()">Try again</button>
+    <button class="act" id="admin-security" style="display:none" onclick="verifyAdminSecurity()">Set up or verify two-factor authentication</button><button class="act" onclick="location.reload()">Try again</button>
     <button class="act ghost" onclick="signOut()">Use another account</button>
   </div>
 </div>
@@ -121,7 +121,7 @@
   </div>
 </div>
 
-<script src="/portal/clerk-loader.js"></script>
+<script src="/portal/clerk-loader.js?v=account-help-2"></script><script src="/portal/owner-security.js?v=1"></script>
 <script>
 /*
  * This page is served both from the API host and from GitHub Pages, so the API
@@ -159,7 +159,9 @@ function show(id) {
   }
 }
 
+async function verifyAdminSecurity(){try{await window.SeanaOwnerSecurity.verify(clerk);await api('/api/onboarding/security');await showSession(clerk.session);}catch(error){$('denied-body').textContent=error.message;}}
 function fail(title, body) {
+  $('admin-security').style.display=title==='Two-factor authentication required'?'inline-block':'none';
   $('denied-title').textContent = title;
   $('denied-body').textContent = body;
   show('denied');
@@ -188,7 +190,7 @@ async function showSession(session) {
       if (res.status === 401) return fail('Sign-in could not be verified', 'Try again, or sign out and use your approved administrator account. Your session may have expired.');
       if (res.status === 403 && res.body?.code === 'mfa_required') return fail('Two-factor authentication required', 'Your account requires a second factor. Complete it in your account security settings.');
       if (res.status >= 500) return fail('Admin service temporarily unavailable', 'Your sign-in succeeded, but the server could not verify access. Please try again.');
-      return fail('No admin access', 'This account is not the approved platform administrator. Use your nominated administrator account.');
+      return fail('No admin access', 'This signed-in account is not authorised for administration. Choose Use another account, then continue with your nominated Google account. Owner signup never grants admin access.');
     }
     me = res.body;
     $('who').textContent = me.role;
