@@ -19,7 +19,7 @@
 @media(max-width:480px){#signin{padding:16px}#signin>.card{padding:16px}#clerk-signin .cl-card{padding:20px 16px}}
 textarea{width:100%;padding:12px;border-radius:9px;border:1px solid var(--line);background:#111318;color:var(--text);font:inherit;resize:vertical}.event-row{padding:18px 0;border-bottom:1px solid var(--line)}.event-row button{margin:0 8px 8px 0}.events-panel>button{margin-bottom:14px}.form-grid fieldset{min-width:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;padding:16px;border:1px solid var(--line);border-radius:12px}.form-grid fieldset label{display:flex;align-items:center;gap:9px}.form-grid input[type=checkbox]{width:18px;height:18px;flex-shrink:0;accent-color:var(--accent)}.form-grid legend{padding:0 7px;color:var(--muted)}
 </style>
-<link rel="stylesheet" href="/portal/dashboard.css?v=owner-workspace-20260916">
+<link rel="stylesheet" href="/portal/dashboard.css?v=application-status-2">
 <link rel="icon" type="image/png" sizes="128x128" href="/portal/favicon.png?v=3"><link rel="icon" type="image/svg+xml" href="/portal/favicon.svg?v=3"><link rel="stylesheet" href="/portal/vendor/leaflet/leaflet.css"><link rel="stylesheet" href="/portal/location-picker.css"></head>
 <body>
   <main id="loading" class="centre"><p class="muted">Loading your workspace…</p></main>
@@ -44,7 +44,7 @@ textarea{width:100%;padding:12px;border-radius:9px;border:1px solid var(--line);
   <script src="/portal/stripe-connect.js"></script>
   <script src="/portal/owner-photos.js"></script>
   <script src="/portal/membership-plans.js"></script>
-  <script src="/portal/owner-setup.js"></script>
+  <script src="/portal/owner-setup.js?v=application-status-2"></script>
   <script src="/portal/owner-onboarding.js?v=setup-in-dashboard-20260916"></script>
   <script>
     const API_URL = /(^localhost$|^127\.|railway\.app$)/.test(location.hostname) ? '' : 'https://saunaapp-production.up.railway.app';
@@ -123,13 +123,13 @@ textarea{width:100%;padding:12px;border-radius:9px;border:1px solid var(--line);
         onChanged:async(saunaId,message)=>{await loadWorkspace(saunaId||active?.saunaId);if(message)notice(message);}});
       panel.refresh().catch(()=>{});return panel;
     }
-    function setupPanel(place){return createOwnerSetupPanel({place,canManage:!place||place.role==='owner',onPage:id=>selectPage(id),onRefresh:()=>loadWorkspace(active?.saunaId),onLaunch:async saunaId=>{const r=await api('/api/onboarding/complete',{method:'POST',body:JSON.stringify({saunaId})});if(!r.ok)throw Error(r.body?.error||'Complete the required steps first.');activePage='overview';await loadWorkspace(saunaId);}});}
+    function setupPanel(place,application=null){return createOwnerSetupPanel({place,application,canManage:!place||place.role==='owner',onPage:id=>selectPage(id),onRefresh:()=>loadWorkspace(active?.saunaId),onLaunch:async saunaId=>{const r=await api('/api/onboarding/complete',{method:'POST',body:JSON.stringify({saunaId})});if(!r.ok)throw Error(r.body?.error||'Complete the required steps first.');activePage='overview';await loadWorkspace(saunaId);}});}
     async function renderEmpty(state,selectedSaunaId){setupMode=true;
       if(!selectedSaunaId)$('location-picker').replaceChildren();$('add-location').classList.remove('hidden');set($('location-name'),'Welcome to your owner workspace');set($('location-meta'),'Set up your sauna, step by step.');
-      const version=dashboardVersion,response=await api('/api/onboarding/readiness');if(version!==dashboardVersion)return;
+      const version=dashboardVersion,[response,applicationState]=await Promise.all([api('/api/onboarding/readiness'),api('/api/onboarding/state')]);if(version!==dashboardVersion)return;
       if(!response.ok)throw Error(response.body?.error||'Could not check setup. Please refresh.');
       const root=$('dashboard');root.replaceChildren();const overview=document.createElement('div');
-      const places=(response.body.locations||[]).filter(p=>!selectedSaunaId||p.saunaId===selectedSaunaId);if(!places.length)overview.append(setupPanel(null));
+      const places=(response.body.locations||[]).filter(p=>!selectedSaunaId||p.saunaId===selectedSaunaId);if(!places.length){if(!applicationState.ok)throw Error('Could not check your application status. Please refresh.');const claims=applicationState.body.claims||[];const claim=claims.find(c=>c.status==='pending')||claims.find(c=>c.status==='rejected');overview.append(setupPanel(null,claim));}
       for(const place of places){const heading=document.createElement('h2');set(heading,place.name);overview.append(heading,setupPanel(place));}
       root.append(pagePanel('overview',overview),pagePanel('setup',onboardingPanel()));activePage='overview';buildNavigation();
     }
