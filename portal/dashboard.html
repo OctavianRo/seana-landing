@@ -4,6 +4,10 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>seána — Business portal</title>
   <script src="/portal/secure-origin.js?v=1"></script>
+  <script>
+    // Old bookmarks remain valid, but release identifiers never appear in the portal URL.
+    if(!window.SeanaPortalRedirecting){const clean=new URL(location.href);clean.searchParams.delete('v');if(clean.searchParams.get('auth')==='signin.')clean.searchParams.set('auth','signin');if(clean.href!==location.href)history.replaceState(null,'',clean.pathname+clean.search+clean.hash);}
+  </script>
   <style>
     :root{--bg:#0f1114;--card:#191c21;--line:#565e6a;--text:#fffaf4;--muted:#d0d2d5;--accent:#f59a62;--green:#83c792;--yellow:#e9be63;--red:#eb8585}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,input,select{font:inherit}.hidden{display:none!important}.centre{display:grid;place-items:center;min-height:100vh;padding:24px}.card,.panel,.metric{background:var(--card);border:1px solid var(--line);border-radius:14px}.card{max-width:480px;width:100%;padding:28px}.logo{font-weight:800;font-size:25px;letter-spacing:-.5px}.muted{color:var(--muted)}.small{font-size:13px}header{height:auto;min-height:64px;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 24px;border-bottom:1px solid var(--line)}.actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.location-picker{width:min(330px,75vw)}input,select{width:100%;padding:10px;border-radius:9px;border:1px solid var(--line);background:#111318;color:var(--text)}button{border:0;border-radius:9px;padding:10px 13px;font-weight:750;background:var(--accent);color:#21140e;cursor:pointer}button.secondary{background:transparent;border:1px solid var(--line);color:var(--text)}button:disabled{opacity:.55;cursor:not-allowed}.shell{max-width:1180px;margin:auto;padding:24px}h1{font-size:26px;line-height:1.2;margin:0 0 5px}h2{font-size:17px;margin:0 0 14px}.intro{margin:22px 0}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}.metric{padding:17px}.label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}.value{font-size:25px;font-weight:800;margin-top:3px}.two{display:grid;grid-template-columns:1.35fr 1fr;gap:13px;margin-top:13px}.panel{padding:18px}.booking{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--line)}.booking:first-of-type{border-top:0;padding-top:0}.name{font-weight:700}.meta{font-size:13px;color:var(--muted)}.status{font-size:12px;font-weight:750;text-transform:capitalize;text-align:right}.confirmed{color:var(--green)}.pending{color:var(--yellow)}.cancelled{color:var(--red)}.list{list-style:none;margin:0;padding:0}.list li{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid var(--line)}.list li:first-child{padding-top:0;border-top:0}.empty{color:var(--muted);text-align:center;padding:26px}.notice{padding:13px 15px;border-radius:11px;border:1px solid rgba(209,138,105,.45);background:rgba(209,138,105,.09);margin:0 0 16px}.notice.error{border-color:rgba(235,133,133,.6);background:rgba(235,133,133,.1)}dialog{border:0;background:transparent;padding:20px;width:min(520px,100%)}dialog::backdrop{background:rgba(0,0,0,.7)}.form{padding:22px}.form-grid{display:grid;gap:12px;margin:16px 0}.form-actions{display:flex;justify-content:flex-end;gap:10px}.error-text{color:var(--red);min-height:22px}@media(max-width:760px){header{padding:12px}.shell{padding:16px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.two{grid-template-columns:1fr}.location-picker{width:100%}}
   
@@ -19,7 +23,7 @@ textarea{width:100%;padding:12px;border-radius:9px;border:1px solid var(--line);
 <link rel="icon" type="image/png" sizes="128x128" href="/portal/favicon.png?v=3"><link rel="icon" type="image/svg+xml" href="/portal/favicon.svg?v=3"><link rel="stylesheet" href="/portal/vendor/leaflet/leaflet.css"><link rel="stylesheet" href="/portal/location-picker.css"></head>
 <body>
   <main id="loading" class="centre"><p class="muted">Loading your workspace…</p></main>
-  <main id="signin" class="centre hidden"><section class="card"><div class="logo">seána</div><h1 style="margin-top:20px">Business portal</h1><p class="muted">Bookings, branches, and demand insights in one secure place.</p><div id="clerk-signin" style="margin-top:20px"></div><button id="signin-retry" class="secondary hidden" type="button">Try sign-in again</button><button id="session-signout" class="secondary hidden" type="button">Sign out and try again</button><p><a id="owner-signup" href="/portal/dashboard.html?v=owner-portal-20260916-final&amp;auth=signup" style="color:#ffb580;font-weight:700;text-decoration:underline">Create owner account</a></p><p class="muted small">New accounts need ownership approval before accessing a sauna.</p></section></main>
+  <main id="signin" class="centre hidden"><section class="card"><div class="logo">seána</div><h1 style="margin-top:20px">Business portal</h1><p class="muted">Bookings, branches, and demand insights in one secure place.</p><div id="clerk-signin" style="margin-top:20px"></div><button id="signin-retry" class="secondary hidden" type="button">Try sign-in again</button><button id="session-signout" class="secondary hidden" type="button">Sign out and try again</button><p><a id="owner-signup" href="/portal/dashboard.html?auth=signup" style="color:#ffb580;font-weight:700;text-decoration:underline">Create owner account</a></p><p class="muted small">Already use seána? Use the same email and sign in, including accounts created with Google. Your existing account can access the owner portal.</p><p class="muted small">New accounts need ownership approval before accessing a sauna.</p></section></main>
   <main id="portal" class="hidden">
     <div class="workspace-layout">
       <aside class="sidebar">
@@ -33,7 +37,7 @@ textarea{width:100%;padding:12px;border-radius:9px;border:1px solid var(--line);
       </div>
     </div>
   </main>
-  <script src="/portal/vendor/leaflet/leaflet.js"></script><script src="/portal/map-location.js"></script><script src="/portal/location-picker.js"></script><script src="/portal/clerk-loader.js?v=capabilities-20260915"></script>
+  <script src="/portal/vendor/leaflet/leaflet.js"></script><script src="/portal/map-location.js"></script><script src="/portal/location-picker.js"></script><script src="/portal/clerk-loader.js?v=account-help"></script>
   <script src="/portal/owner-security.js?v=capabilities-20260915"></script>
 <script src="/portal/session-recovery.js?v=capabilities-20260915"></script><script src="/portal/sauna-events.js"></script>
   <script src="/portal/session-types.js"></script>
@@ -74,16 +78,16 @@ textarea{width:100%;padding:12px;border-radius:9px;border:1px solid var(--line);
     function clearOwnerPhotos(){for(const picker of locationPickers)picker.dispose();locationPickers.clear();for(const panel of ownerPhotoPanels)panel.dispose();ownerPhotoPanels.clear();}
     function clearSessionWorkspace(){clearOwnerPhotos();++workspaceVersion;++dashboardVersion;locations=[];active=null;$('dashboard').replaceChildren();$('location-picker').replaceChildren();$('workspace-nav').replaceChildren();set($('location-name'),'Your dashboard');set($('location-meta'),'');notice('');show('signin');}
     function showSessionRecovery(){recoveringSession=true;clearSessionWorkspace();clerk?.unmountSignIn?.($('clerk-signin'));const p=document.createElement('p');p.className='notice error';p.setAttribute('role','alert');set(p,'Your session could not be verified. Sign out and try again. If it happens again, contact hello@seana.ie.');$('clerk-signin').replaceChildren(p);$('session-signout').classList.remove('hidden');}
-    async function resetOwnerSession(button){if(button.disabled)return;button.disabled=true;try{await window.SeanaSession.signOut(clerk,clearSessionWorkspace,location.pathname+'?v=owner-portal-20260916-final&auth=signin');}catch{showSessionRecovery();set($('clerk-signin'),'We couldn’t finish signing you out. Check your connection and try again.');}finally{button.disabled=false;}}
+    async function resetOwnerSession(button){if(button.disabled)return;button.disabled=true;try{await window.SeanaSession.signOut(clerk,clearSessionWorkspace,location.pathname+'?auth=signin');}catch{showSessionRecovery();set($('clerk-signin'),'We couldn’t finish signing you out. Check your connection and try again.');}finally{button.disabled=false;}}
     // One page, both doors: ?auth=signup opens account creation, anything else
     // opens sign-in. Clerk's own toggle links point back here, so an owner is
     // never handed a second, different-looking sign-in form on another page.
-    const identityUrl=mode=>location.origin+location.pathname+'?v=owner-portal-20260916-final&auth='+mode;
+    const identityUrl=mode=>location.origin+location.pathname+'?auth='+mode;
     const identityMode=()=>new URLSearchParams(location.search).get('auth')==='signup'?'signup':'signin';
     function mountIdentity(){
       const mode=identityMode(),target=$('clerk-signin');
       clerk.unmountSignIn?.(target);clerk.unmountSignUp?.(target);target.replaceChildren();
-      const options={forceRedirectUrl:location.origin+location.pathname+'?v=owner-portal-20260916-final'};
+      const options={forceRedirectUrl:location.origin+location.pathname+''};
       if(mode==='signup')clerk.mountSignUp(target,{...options,signInUrl:identityUrl('signin')});
       else clerk.mountSignIn(target,{...options,signUpUrl:identityUrl('signup')});
       const toggle=$('owner-signup');toggle.href=identityUrl(mode==='signup'?'signin':'signup');
@@ -96,7 +100,7 @@ textarea{width:100%;padding:12px;border-radius:9px;border:1px solid var(--line);
       activePage='overview';
       const registration=await api('/api/accounts/register',{method:'POST',body:JSON.stringify({accountType:'owner',source:'website'})});if(!registration.ok)throw new Error('Could not save your owner account. Please reload to try again.');
       if(sessionVersion!==workspaceVersion||clerk.session?.id!==session.id)return;
-      const returning=new URLSearchParams(location.search);if(returning.has('connect'))activePage='payments';await loadWorkspace(returning.get('saunaId'));if(sessionVersion<=workspaceVersion&&clerk.session?.id===session.id)history.replaceState(null,'',location.pathname+'?v=owner-portal-20260916-final');
+      const returning=new URLSearchParams(location.search);if(returning.has('connect'))activePage='payments';await loadWorkspace(returning.get('saunaId'));if(sessionVersion<=workspaceVersion&&clerk.session?.id===session.id)history.replaceState(null,'',location.pathname+'');
     }
     async function boot(){if(window.SeanaPortalRedirecting)return;const retry=$('signin-retry');retry.classList.add('hidden');retry.disabled=true;$('clerk-signin').replaceChildren();show('loading');try{
       const response=await fetch(`${API_URL}/api/public-config`,{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!response.ok)throw new Error('Owner service is temporarily unavailable.');features=await response.json();

@@ -108,9 +108,12 @@
     <p class="sub" id="subtitle"></p>
     <div class="tabs">
       <button class="tab active" data-view="directory">All saunas</button>
+      <button class="tab" data-view="photos">Photo review</button>
       <button class="tab" data-view="claims">Ownership claims</button>
-      <button class="tab" data-view="listings">Listings</button>
+      <button class="tab" data-view="listings">Sauna review</button>
       <button class="tab" data-view="onboarding">Owner onboarding</button>
+      <button class="tab" data-view="customers">Customer signups</button>
+      <button class="tab" data-view="owners">Owner signups</button>
       <button class="tab" data-view="orgs">Organisations</button>
       <button class="tab" data-view="security">Security</button>
     </div>
@@ -168,6 +171,7 @@ async function timedFetch(url, options = {}) {
   return fetch(url, { ...options, signal: AbortSignal.timeout(15000) });
 }
 async function showSession(session) {
+  clearReviewPreviews();
   const generation = ++authGeneration;
   me = null;
   $('content').replaceChildren();
@@ -250,9 +254,14 @@ document.querySelectorAll('.tab').forEach(tab => {
   };
 });
 
+const reviewPreviewUrls = new Set();
+function clearReviewPreviews(){for(const url of reviewPreviewUrls)URL.revokeObjectURL(url);reviewPreviewUrls.clear();}
 async function render() {
+  clearReviewPreviews();
   $('content').innerHTML = '<div class="spin"></div>';
   try {
+    if (view === 'customers' || view === 'owners') return await renderRegistrations();
+    if (view === 'photos') return await renderPhotos();
     if (view === 'directory') return await renderDirectory();
     if (view === 'claims')   return await renderClaims();
     if (view === 'listings') return await renderListings();
@@ -264,14 +273,38 @@ async function render() {
   }
 }
 
+async function renderRegistrations(offset=0) {
+  const selected=view,type=selected==='customers'?'customer':'owner';
+  const result=await api('/api/admin/registrations?type='+type+'&offset='+offset);
+  if(!result.ok)throw new Error(result.body?.error || 'Could not load signups');
+  if(view!==selected)return;
+  $('content').innerHTML=`<h2>${type==='customer'?'Customer':'Sauna owner'} signups</h2><p>${type==='customer'?'One account for the website and app.':'Owner signup records are separate from customer signups. Listing access still requires verification.'}</p><div style="overflow:auto"><table><thead><tr><th>Email</th><th>Joined through</th><th>Joined</th></tr></thead><tbody>${result.body.registrations.map(r=>`<tr><td>${esc(r.email)}</td><td>${esc(r.signup_source)}</td><td>${esc(new Date(r.created_at).toLocaleDateString('en-IE'))}</td></tr>`).join('') || '<tr><td colspan="3">No signups yet.</td></tr>'}</tbody></table></div><div id="signup-pages"></div>`;
+  for(const [label,page] of [['Previous',offset>0?Math.max(0,offset-100):null],['Next',result.body.nextOffset]]){if(page===null)continue;const button=document.createElement('button');button.textContent=label;button.onclick=()=>renderRegistrations(page).catch(e=>{$('content').textContent=e.message;});$('signup-pages').append(button);}
+}
+
 async function renderOnboarding(offset = 0) {
   const result = await api('/api/admin/onboarding?offset=' + offset);
   if (!result.ok) throw new Error(result.body?.error || 'Could not load onboarding');
   if (view !== 'onboarding') return;
   const rows = result.body.organizations;
-  $('content').innerHTML = `<h2>Help owners reach their first booking</h2><p>Oldest unfinished setups appear first. Use Ownership claims and Listings to review submissions. A saved step is progress, not proof of booking readiness.</p><label>Filter this page<input id="onboarding-search" type="search" placeholder="Business name or email"></label><div style="overflow:auto"><table><thead><tr><th>Business</th><th>Contact</th><th>Progress / source</th><th>Locations / verified</th><th>Pending claims</th><th>Last setup activity</th></tr></thead><tbody id="onboarding-rows"></tbody></table></div><div id="onboarding-pages"></div>`;
+  $('content').innerHTML = `<h2>Help owners reach their first booking</h2><p>Oldest unfinished setups appear first. Use the review queues below to accept or reject owner submissions. A saved step is progress, not proof of booking readiness.</p><div class="actions"><button class="act" onclick="document.querySelector('[data-view=listings]').click()">Review new saunas</button><button class="act" onclick="document.querySelector('[data-view=claims]').click()">Review ownership claims</button><button class="act" onclick="render()">Refresh submissions</button></div><label>Filter this page<input id="onboarding-search" type="search" placeholder="Business name or email"></label><div style="overflow:auto"><table><thead><tr><th>Business</th><th>Contact</th><th>Progress / source</th><th>Locations / verified</th><th>Pending claims</th><th>Last setup activity</th></tr></thead><tbody id="onboarding-rows"></tbody></table></div><div id="onboarding-pages"></div>`;
   const draw = () => { const q = $('onboarding-search').value.toLowerCase(); $('onboarding-rows').innerHTML = rows.filter(o => `${o.name} ${o.billing_email}`.toLowerCase().includes(q)).map(o => `<tr><td>${esc(o.name)}<br>${esc(o.status)}</td><td>${esc(o.billing_email || '—')}</td><td>${esc(o.completed_at ? 'Setup completed' : o.step)}<br>${esc(o.source)}</td><td>${esc(o.locations)} / ${esc(o.verified_locations)}</td><td>${esc(o.pending_claims)}</td><td>${esc(new Date(o.updated_at || o.created_at).toLocaleDateString('en-IE'))}</td></tr>`).join('') || '<tr><td colspan="6">No matching businesses</td></tr>'; }; $('onboarding-search').addEventListener('input', draw); draw();
   for (const [label, next] of [['Previous', offset > 0 ? Math.max(0, offset - 100) : null], ['Next', result.body.nextOffset]]) { if (next === null) continue; const b = document.createElement('button'); b.textContent = label; b.onclick = () => renderOnboarding(next).catch(e => { $('content').textContent = e.message; }); $('onboarding-pages').append(b); }
+}
+
+async function renderPhotos(){
+  const response=await api('/api/admin/photos');if(!response.ok)throw new Error(response.body?.error||'Could not load photo queue');if(view!=='photos')return;
+  const root=$('content');root.replaceChildren();const note=document.createElement('p');note.textContent='Owner uploads stay private until you approve them. Open each photo and check it represents the venue before publishing. Showing up to 100 pending photos.';root.append(note);
+  const photos=response.body.photos||[];if(!photos.length){const empty=document.createElement('p');empty.textContent='No photos waiting for review.';root.append(empty);}
+  for(const photo of photos){
+    const card=document.createElement('section');card.className='row';const title=document.createElement('h2');title.textContent=photo.sauna_name||photo.sauna_id;const status=document.createElement('p');status.textContent='Pending review · '+new Date(photo.created_at).toLocaleDateString('en-IE');
+    const image=document.createElement('img');image.alt='Owner-submitted venue photo awaiting approval';image.style.cssText='max-width:100%;width:480px;max-height:420px;object-fit:contain';image.hidden=true;
+    const preview=document.createElement('button');preview.className='act';preview.textContent='View photo';const approve=document.createElement('button');approve.className='act ap';approve.textContent='Approve and publish';approve.disabled=true;const reject=document.createElement('button');reject.className='act rj';reject.textContent='Reject';
+    preview.onclick=async()=>{preview.disabled=true;try{const token=await clerk.session?.getToken();const response=await timedFetch(`${API_URL}/api/admin/photos/${encodeURIComponent(photo.id)}/preview`,{headers:{Authorization:`Bearer ${token}`},cache:'no-store'});if(!response.ok)throw new Error('Preview unavailable');const blob=await response.blob();if(!card.isConnected)return;const url=URL.createObjectURL(blob);reviewPreviewUrls.add(url);image.src=url;image.hidden=false;approve.disabled=false;}catch(error){status.textContent=error.message;preview.disabled=false;}};
+    const review=async decision=>{let reason='';if(decision==='rejected'){reason=prompt('Why is this photo unsuitable? This reason is shown to the owner.');if(!reason?.trim())return;}else if(!confirm('Publish this photo in the customer app?'))return;
+      approve.disabled=true;reject.disabled=true;try{const result=await api(`/api/admin/photos/${encodeURIComponent(photo.id)}/review`,{method:'POST',body:JSON.stringify({status:decision,reason})});if(!result.ok)throw new Error(result.body?.error||'Could not review photo');if(view==='photos')await render();}catch(error){status.textContent=error.message;approve.disabled=image.hidden;reject.disabled=false;}};
+    approve.onclick=()=>review('approved');reject.onclick=()=>review('rejected');card.append(title,status,image,preview,approve,reject);root.append(card);
+  }
 }
 
 async function renderDirectory() {
@@ -361,9 +394,12 @@ async function rejectClaim(id) {
 // ─── Listings ────────────────────────────────────────────────────────────────
 
 async function renderListings() {
-  const { body } = await api('/api/admin/submissions');
+  const response = await api('/api/admin/submissions');
+  if(!response.ok)throw new Error(response.body?.error || 'Could not load sauna submissions');
+  if(view!=='listings')return;
+  const body=response.body;
   const listings = (body?.listings || [])
-    .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+    .sort((a, b) => Number(['pending','info_requested'].includes(b.status))-Number(['pending','info_requested'].includes(a.status)) || new Date(b.submittedAt) - new Date(a.submittedAt));
 
   if (listings.length === 0) {
     $('content').innerHTML = '<p class="empty">No submissions.</p>';
@@ -387,9 +423,14 @@ async function renderListings() {
           </div>
           <span class="pill p-${esc(status)}">${esc(status)}</span>
         </div>
-        ${status === 'pending' ? `
+        <p>${esc(d.description || 'No description provided')}</p><p><strong>Applicant:</strong> ${esc(l.contactName || "Not supplied")} · ${esc(l.contactPhone || d.phone || "No phone")}</p><p><strong>Map pin:</strong> ${esc(d.lat ?? "Not supplied")}, ${esc(d.lng ?? "Not supplied")}</p><p><strong>Address:</strong> ${esc(d.location || 'Missing')} · ${esc(d.county || 'Missing')}</p><p><strong>Business contact:</strong> ${esc(d.phone || 'No phone')} · ${esc(d.website || 'No website')}</p><p><strong>Opening hours:</strong> ${esc(d.opening_hours || 'Missing')}</p><p><strong>Session:</strong> €${esc(d.session_price ?? 'Not set')} · ${esc(d.max_capacity ?? 'Not set')} people</p><p><strong>Rules:</strong> ${esc(d.sauna_rules || 'Not provided')}</p><p><strong>Booking terms:</strong> ${esc(d.terms_conditions || 'Not provided')}</p>
+        ${['pending','info_requested'].includes(status) ? `
+          <p>Approval unlocks the owner dashboard. The sauna stays private until the owner completes all launch requirements. Check the venue and contact the business independently before granting access.</p>
+          <label><input type="checkbox" id="real-${esc(l.listingId)}"> I checked that this is a real sauna at the stated location.</label><br>
+          <label><input type="checkbox" id="owner-${esc(l.listingId)}"> I verified that the submitter is authorised to manage it.</label>
+          <p class="row-meta">${d.reviewNotificationSentAt ? 'Review notification sent' : 'Review notification queued — email configuration and background worker required'}</p>
           <div class="actions">
-            <button class="act ap" onclick="approveListing('${esc(l.listingId)}')" ${canAct ? '' : 'disabled'}>Approve</button>
+            <button class="act ap" onclick="approveListing('${esc(l.listingId)}')" ${canAct ? '' : 'disabled'}>Approve sauna</button>
             <button class="act rj" onclick="rejectListing('${esc(l.listingId)}')" ${canAct ? '' : 'disabled'}>Reject</button>
           </div>` : ''}
       </div>`;
@@ -397,7 +438,10 @@ async function renderListings() {
 }
 
 async function approveListing(id) {
-  const res = await api(`/api/listings/${id}/approve`, { method: 'POST', body: '{}' });
+  const verifiedRealSauna = document.getElementById('real-' + id)?.checked === true;
+  const verifiedOwnership = document.getElementById('owner-' + id)?.checked === true;
+  if (!verifiedRealSauna || !verifiedOwnership) return alert('Complete both verification checks before approving this sauna.');
+  const res = await api(`/api/listings/${id}/approve`, { method: 'POST', body: JSON.stringify({verifiedRealSauna, verifiedOwnership}) });
   if (res.ok) render(); else alert(res.body?.error || 'Could not approve');
 }
 
