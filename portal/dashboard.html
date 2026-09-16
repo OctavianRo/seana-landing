@@ -19,7 +19,7 @@ textarea{width:100%;padding:12px;border-radius:9px;border:1px solid var(--line);
 <link rel="icon" type="image/png" sizes="128x128" href="/portal/favicon.png?v=3"><link rel="icon" type="image/svg+xml" href="/portal/favicon.svg?v=3"><link rel="stylesheet" href="/portal/vendor/leaflet/leaflet.css"><link rel="stylesheet" href="/portal/location-picker.css"></head>
 <body>
   <main id="loading" class="centre"><p class="muted">Loading your workspace…</p></main>
-  <main id="signin" class="centre hidden"><section class="card"><div class="logo">seána</div><h1 style="margin-top:20px">Business portal</h1><p class="muted">Bookings, branches, and demand insights in one secure place.</p><div id="clerk-signin" style="margin-top:20px"></div><button id="signin-retry" class="secondary hidden" type="button">Try sign-in again</button><button id="session-signout" class="secondary hidden" type="button">Sign out and try again</button><p><a id="owner-signup" href="/portal/dashboard.html?v=owner-portal-20260916&amp;auth=signup" style="color:#ffb580;font-weight:700;text-decoration:underline">Create owner account</a></p><p class="muted small">New accounts need ownership approval before accessing a sauna.</p></section></main>
+  <main id="signin" class="centre hidden"><section class="card"><div class="logo">seána</div><h1 style="margin-top:20px">Business portal</h1><p class="muted">Bookings, branches, and demand insights in one secure place.</p><div id="clerk-signin" style="margin-top:20px"></div><button id="signin-retry" class="secondary hidden" type="button">Try sign-in again</button><button id="session-signout" class="secondary hidden" type="button">Sign out and try again</button><p><a id="owner-signup" href="/portal/dashboard.html?v=owner-portal-20260916-final&amp;auth=signup" style="color:#ffb580;font-weight:700;text-decoration:underline">Create owner account</a></p><p class="muted small">New accounts need ownership approval before accessing a sauna.</p></section></main>
   <main id="portal" class="hidden">
     <div class="workspace-layout">
       <aside class="sidebar">
@@ -74,16 +74,16 @@ textarea{width:100%;padding:12px;border-radius:9px;border:1px solid var(--line);
     function clearOwnerPhotos(){for(const picker of locationPickers)picker.dispose();locationPickers.clear();for(const panel of ownerPhotoPanels)panel.dispose();ownerPhotoPanels.clear();}
     function clearSessionWorkspace(){clearOwnerPhotos();++workspaceVersion;++dashboardVersion;locations=[];active=null;$('dashboard').replaceChildren();$('location-picker').replaceChildren();$('workspace-nav').replaceChildren();set($('location-name'),'Your dashboard');set($('location-meta'),'');notice('');show('signin');}
     function showSessionRecovery(){recoveringSession=true;clearSessionWorkspace();clerk?.unmountSignIn?.($('clerk-signin'));const p=document.createElement('p');p.className='notice error';p.setAttribute('role','alert');set(p,'Your session could not be verified. Sign out and try again. If it happens again, contact hello@seana.ie.');$('clerk-signin').replaceChildren(p);$('session-signout').classList.remove('hidden');}
-    async function resetOwnerSession(button){if(button.disabled)return;button.disabled=true;try{await window.SeanaSession.signOut(clerk,clearSessionWorkspace,location.pathname+'?v=owner-portal-20260916&auth=signin');}catch{showSessionRecovery();set($('clerk-signin'),'We couldn’t finish signing you out. Check your connection and try again.');}finally{button.disabled=false;}}
+    async function resetOwnerSession(button){if(button.disabled)return;button.disabled=true;try{await window.SeanaSession.signOut(clerk,clearSessionWorkspace,location.pathname+'?v=owner-portal-20260916-final&auth=signin');}catch{showSessionRecovery();set($('clerk-signin'),'We couldn’t finish signing you out. Check your connection and try again.');}finally{button.disabled=false;}}
     // One page, both doors: ?auth=signup opens account creation, anything else
     // opens sign-in. Clerk's own toggle links point back here, so an owner is
     // never handed a second, different-looking sign-in form on another page.
-    const identityUrl=mode=>location.origin+location.pathname+'?v=owner-portal-20260916&auth='+mode;
+    const identityUrl=mode=>location.origin+location.pathname+'?v=owner-portal-20260916-final&auth='+mode;
     const identityMode=()=>new URLSearchParams(location.search).get('auth')==='signup'?'signup':'signin';
     function mountIdentity(){
       const mode=identityMode(),target=$('clerk-signin');
       clerk.unmountSignIn?.(target);clerk.unmountSignUp?.(target);target.replaceChildren();
-      const options={forceRedirectUrl:location.origin+location.pathname+'?v=owner-portal-20260916'};
+      const options={forceRedirectUrl:location.origin+location.pathname+'?v=owner-portal-20260916-final'};
       if(mode==='signup')clerk.mountSignUp(target,{...options,signInUrl:identityUrl('signin')});
       else clerk.mountSignIn(target,{...options,signUpUrl:identityUrl('signup')});
       const toggle=$('owner-signup');toggle.href=identityUrl(mode==='signup'?'signin':'signup');
@@ -96,7 +96,7 @@ textarea{width:100%;padding:12px;border-radius:9px;border:1px solid var(--line);
       activePage='overview';
       const registration=await api('/api/accounts/register',{method:'POST',body:JSON.stringify({accountType:'owner',source:'website'})});if(!registration.ok)throw new Error('Could not save your owner account. Please reload to try again.');
       if(sessionVersion!==workspaceVersion||clerk.session?.id!==session.id)return;
-      const returning=new URLSearchParams(location.search);if(returning.has('connect'))activePage='payments';await loadWorkspace(returning.get('saunaId'));if(sessionVersion<=workspaceVersion&&clerk.session?.id===session.id)history.replaceState(null,'',location.pathname+'?v=owner-portal-20260916');
+      const returning=new URLSearchParams(location.search);if(returning.has('connect'))activePage='payments';await loadWorkspace(returning.get('saunaId'));if(sessionVersion<=workspaceVersion&&clerk.session?.id===session.id)history.replaceState(null,'',location.pathname+'?v=owner-portal-20260916-final');
     }
     async function boot(){if(window.SeanaPortalRedirecting)return;const retry=$('signin-retry');retry.classList.add('hidden');retry.disabled=true;$('clerk-signin').replaceChildren();show('loading');try{
       const response=await fetch(`${API_URL}/api/public-config`,{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!response.ok)throw new Error('Owner service is temporarily unavailable.');features=await response.json();
