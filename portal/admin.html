@@ -79,6 +79,19 @@
 #clerk-signin .cl-socialButtonsBlockButton{background:#262a31!important;color:#fff!important;border:1px solid #626975!important}
 #clerk-signin .cl-formFieldInput{background:#0f1114!important;border-color:#626975!important;caret-color:#fff}
 #clerk-signin .cl-formFieldInput::placeholder{color:#d0d2d5!important;opacity:1}
+/* White portal text and dark form controls, including dynamically added review actions. */
+:root{color-scheme:dark;--text:#fff;--text2:#fff;--text3:#fff}
+input,select,textarea{color:#fff;background:#0f1114;border:1px solid #626975;border-radius:6px;padding:9px 12px;font:inherit;caret-color:#fff}
+input::placeholder,textarea::placeholder{color:#d0d2d5;opacity:1}
+select option{color:#fff;background:#1a1d23}
+button.act,.tab,.role,.pill{color:#fff}
+button.act{background:#343b47}
+button.act.ghost{background:transparent;border:1px solid #626975}
+.tab.active,.role{background:#93452d;color:#fff}
+button.act.ap{background:#28683a;color:#fff}
+button.act.rj{background:#a33232;color:#fff}
+#content a{color:#fff!important;text-decoration:underline}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid #ffb580;outline-offset:3px}
 </style>
 <link rel="icon" type="image/png" sizes="128x128" href="/portal/favicon.png?v=3"><link rel="icon" type="image/svg+xml" href="/portal/favicon.svg?v=3"></head>
 <body>
