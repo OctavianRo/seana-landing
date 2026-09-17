@@ -117,10 +117,11 @@ $('cancel').addEventListener('click', async () => {
 });
 $('check').addEventListener('click', checkStatus);
 $('reload').addEventListener('click', availability);
-$('share').addEventListener('click', () => {
+$('share').addEventListener('click', async () => {
   // Always share public session coordinates, never a payment token or booking reference.
-  const text = `Join this sauna session on ${date}. Check availability and book your own place: ${publicUrl}`;
-  window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener,noreferrer');
+  const name=$('venue-name')?.textContent||'this sauna';
+  const text = `Join me at ${name} on ${date}! Open this session in seána and book your own place, subject to availability.`;
+  try {if(navigator.share)await navigator.share({title:'Join my sauna session',text,url:publicUrl});else {await navigator.clipboard.writeText(text+' '+publicUrl);message('Invitation copied. Send it to your friends on WhatsApp or Messages.');}}catch(error){if(error.name!=='AbortError')message('Could not share this session. Please try again.');}
 });
 showAttempt();
 availability();

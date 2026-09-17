@@ -31,7 +31,7 @@
    action(card,'Unfollow',async()=>{if(!confirm('Stop following this sauna?'))return;await api('/api/customer/event-follows/'+encodeURIComponent(item.saunaId),'DELETE');await load();});
   }else{
    card.append(el('span',item.status),el('h3',item.saunaName),el('p',date(item.date)+' · '+(item.startTime||'')+'–'+(item.endTime||'')+' · Ireland time'),el('p',item.county||''),el('strong',item.reward?'Included session':money(item.price)));
-   if(item.canShare&&item.inviteUrl)action(card,'Invite a friend',async()=>{const url=safeLink(item.inviteUrl,'invite'),text=`Join me at ${item.saunaName} on ${date(item.date)} at ${item.startTime}. Book your own place in seána.`;if(navigator.share)await navigator.share({title:item.saunaName,text,url});else{await navigator.clipboard.writeText(text+' '+url);$('status').textContent='Invitation copied. Send it on WhatsApp or Messages.';}await api('/api/customer/sessions/'+encodeURIComponent(item.id)+'/share','POST');});
+   if(item.canShare&&item.inviteUrl)action(card,'Invite a friend',async()=>{const invite=new URL(safeLink(item.inviteUrl,'invite'));const url='https://www.seana.ie/portal/book.html?'+new URLSearchParams({saunaId:decodeURIComponent(invite.pathname.slice('/join/'.length)),...Object.fromEntries(invite.searchParams)}),text=`Join me at ${item.saunaName} on ${date(item.date)} at ${item.startTime}. Book your own place in seána.`;if(navigator.share)await navigator.share({title:item.saunaName,text,url});else{await navigator.clipboard.writeText(text+' '+url);$('status').textContent='Invitation copied. Send it on WhatsApp or Messages.';}await api('/api/customer/sessions/'+encodeURIComponent(item.id)+'/share','POST');});
   }
   card.querySelector('span').className='badge';return card;
  }
