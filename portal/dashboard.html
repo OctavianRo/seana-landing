@@ -19,7 +19,7 @@
 @media(max-width:480px){#signin{padding:16px}#signin>.card{padding:16px}#clerk-signin .cl-card{padding:20px 16px}}
 textarea{width:100%;padding:12px;border-radius:9px;border:1px solid var(--line);background:#111318;color:var(--text);font:inherit;resize:vertical}.event-row{padding:18px 0;border-bottom:1px solid var(--line)}.event-row button{margin:0 8px 8px 0}.events-panel>button{margin-bottom:14px}.form-grid fieldset{min-width:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;padding:16px;border:1px solid var(--line);border-radius:12px}.form-grid fieldset label{display:flex;align-items:center;gap:9px}.form-grid input[type=checkbox]{width:18px;height:18px;flex-shrink:0;accent-color:var(--accent)}.form-grid legend{padding:0 7px;color:var(--muted)}
 </style>
-<link rel="stylesheet" href="/portal/dashboard.css?v=application-status-2">
+<link rel="stylesheet" href="/portal/dashboard.css?v=owner-wizard-1">
 <link rel="icon" type="image/png" sizes="128x128" href="/portal/favicon.png?v=3"><link rel="icon" type="image/svg+xml" href="/portal/favicon.svg?v=3"><link rel="stylesheet" href="/portal/vendor/leaflet/leaflet.css"><link rel="stylesheet" href="/portal/location-picker.css"></head>
 <body>
   <main id="loading" class="centre"><p class="muted">Loading your workspace…</p></main>
@@ -44,8 +44,8 @@ textarea{width:100%;padding:12px;border-radius:9px;border:1px solid var(--line);
   <script src="/portal/stripe-connect.js"></script>
   <script src="/portal/owner-photos.js"></script>
   <script src="/portal/membership-plans.js"></script>
-  <script src="/portal/owner-setup.js?v=application-status-2"></script>
-  <script src="/portal/owner-onboarding.js?v=setup-in-dashboard-20260916"></script>
+  <script src="/portal/owner-setup.js?v=owner-wizard-1"></script>
+  <script src="/portal/owner-onboarding.js?v=owner-wizard-1"></script>
   <script>
     const API_URL = /(^localhost$|^127\.|railway\.app$)/.test(location.hostname) ? '' : 'https://saunaapp-production.up.railway.app';
     let clerk, locations=[], active, dashboardVersion=0, workspaceVersion=0, observedSession, recoveringSession=false, features={};

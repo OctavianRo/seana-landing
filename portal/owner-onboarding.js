@@ -56,7 +56,7 @@ function createOwnerOnboardingPanel({ api, source = 'website', onChanged, onPick
   const claimArea = el('div', '', 'onboarding-claim');
 
   const searchCard = el('div', '', 'card section');
-  searchCard.append(el('h3', '1. Find your existing listing'), el('p', 'Check here first so you don’t create a duplicate.', 'muted'));
+  searchCard.append(el('h3', 'Already listed on seána?'), el('p', 'Search and request access to your existing listing instead of adding it again.', 'muted'));
   const searchForm = document.createElement('form');
   const searchLabel = el('label', 'Sauna name');
   const searchInput = document.createElement('input');
@@ -115,10 +115,15 @@ function createOwnerOnboardingPanel({ api, source = 'website', onChanged, onPick
   // ── 2. Add a location that is not listed yet ────────────────────────────────
   const addDetails = document.createElement('details');
   addDetails.className = 'onboarding-new-location';
-  addDetails.append(el('summary', 'Can’t find your sauna? Add a new location'));
-  addDetails.append(el('p', 'We review new locations before publication. Only an organisation owner can add locations.', 'muted'));
+  addDetails.open = true;
+  addDetails.append(el('summary', 'Add a new location'));
+  addDetails.append(el('p', 'Three short steps. Your listing stays private while we review it. Connect payments after approval.', 'muted'));
 
   const addForm = document.createElement('form');
+  addForm.noValidate = true;
+  const stepNames = ['Your sauna', 'Sessions & policies', 'Review & submit'];
+  const stepStatus = el('p', '', 'onboarding-step-status'); stepStatus.setAttribute('aria-live', 'polite');
+  const steps = stepNames.map(name => { const section = el('section', '', 'onboarding-step'); section.append(el('h3', name)); return section; });
   const grid = el('div', '', 'form-grid');
   const field = (labelText, name, attrs = {}, tag = 'input') => {
     const label = el('label', labelText);
@@ -132,25 +137,32 @@ function createOwnerOnboardingPanel({ api, source = 'website', onChanged, onPick
     field('Sauna name', 'name', { required: true, minLength: 2, maxLength: 160, autocomplete: 'organization' }),
     field('County', 'county', { required: true, maxLength: 80 }),
     field('Address / directions', 'location', { required: true, maxLength: 300, autocomplete: 'street-address' }),
-    field('Phone', 'phone', { type: 'tel', maxLength: 50, autocomplete: 'tel' }),
-    field('Website', 'website', { type: 'url', maxLength: 2000, placeholder: 'https://' }),
+    field('Phone (optional)', 'phone', { type: 'tel', maxLength: 50, autocomplete: 'tel' }),
+    field('Website (optional)', 'website', { type: 'url', maxLength: 2000, placeholder: 'https://' }),
+  );
+  const sessions = el('div', '', 'form-grid');
+  sessions.append(
     field('Opening hours', 'opening_hours', { required: true, maxLength: 2000, placeholder: 'e.g. Mon–Sun 09:00–18:00' }),
     field('Session price (€)', 'session_price', { type: 'number', min: '0.5', max: '10000', step: '0.01', required: true }),
     field('People per session', 'max_capacity', { type: 'number', min: '1', max: '500', step: '1', required: true }),
   );
-  addForm.append(grid);
+  steps[0].append(grid);
 
   let picker;
   if (window.createSaunaLocationPicker) {
     picker = createSaunaLocationPicker({ getAddress: () => ['name', 'location', 'county'].map(key => addForm.elements.namedItem(key)?.value || '').filter(Boolean).join(', ') });
-    addForm.append(picker);
+    const pinDetails = el('details', '', 'onboarding-pin');
+    pinDetails.append(el('summary', 'Set your entrance pin (you can do this after approval)'), picker);
+    steps[0].append(pinDetails);
     onPicker?.(picker);
   }
 
-  addForm.append(
+  steps[0].append(
     field('What makes your sauna special?', 'description', { required: true, maxLength: 5000, placeholder: 'Describe the setting, facilities and what guests should bring.' }, 'textarea'),
-    field('Sauna rules', 'sauna_rules', { required: true, maxLength: 10000 }, 'textarea'),
-    field('Booking and cancellation terms', 'terms_conditions', { required: true, maxLength: 20000 }, 'textarea'),
+  );
+  steps[1].append(sessions, el('p', 'Tell guests what to expect. You can set individual session types and bookable times after approval.', 'muted'),
+    field('Sauna rules', 'sauna_rules', { required: true, maxLength: 10000, placeholder: 'For example: what to bring, age limits and arrival time.' }, 'textarea'),
+    field('Booking and cancellation terms', 'terms_conditions', { required: true, maxLength: 20000, placeholder: 'Explain your cancellation, refund and rescheduling policy.' }, 'textarea'),
   );
 
   const consent = el('label', '', 'small');
@@ -158,10 +170,46 @@ function createOwnerOnboardingPanel({ api, source = 'website', onChanged, onPick
   consentBox.type = 'checkbox'; consentBox.required = true;
   consent.append(consentBox, document.createTextNode(' I’m authorised to represent this sauna and these details are accurate.'));
   const addButton = el('button', 'Submit location for review'); addButton.type = 'submit';
-  addForm.append(consent, el('p', 'We use your verified account email to manage your submission. Submitting a listing does not subscribe you to marketing.', 'muted small'), addButton);
+  const summary = el('dl', '', 'onboarding-review');
+  steps[2].append(summary, consent, el('p', 'We use your verified account email to manage your submission. Submitting a listing does not subscribe you to marketing.', 'muted small'), addButton);
+
+  let currentStep = 0;
+  const back = el('button', 'Back', 'secondary'); back.type = 'button';
+  const next = el('button', 'Continue'); next.type = 'button';
+  const controls = el('div', '', 'onboarding-controls'); controls.append(back, next);
+  function showStep(index, focus = false) {
+    currentStep = index;
+    steps.forEach((step, i) => { step.hidden = i !== index; });
+    stepStatus.textContent = `Step ${index + 1} of 3 · ${stepNames[index]}`;
+    back.hidden = index === 0; next.hidden = index === 2;
+    next.textContent = index === 1 ? 'Review my sauna' : 'Continue';
+    if (index === 2) {
+      summary.replaceChildren();
+      for (const [key, label] of [['name','Sauna'],['location','Address'],['county','County'],['opening_hours','Opening hours'],['session_price','Price per person (€)'],['max_capacity','People per session'],['description','About your sauna'],['sauna_rules','Sauna rules'],['terms_conditions','Booking terms']]) {
+        summary.append(el('dt', label), el('dd', addForm.elements.namedItem(key)?.value || '—'));
+      }
+    }
+    if (focus) { steps[index].setAttribute('tabindex', '-1'); steps[index].focus(); }
+  }
+  function validateStep(index) {
+    for (const input of steps[index].querySelectorAll('input, textarea, select')) {
+      if (!input.checkValidity()) { input.reportValidity(); return false; }
+    }
+    if (index === 0) { try { picker?.validate(); } catch (error) { say(error.message, true); return false; } }
+    return true;
+  }
+  next.addEventListener('click', () => { if (validateStep(currentStep)) { say(''); showStep(currentStep + 1, true); } });
+  back.addEventListener('click', () => { say(''); showStep(Math.max(0, currentStep - 1), true); });
+  addForm.append(stepStatus, ...steps, controls);
+  showStep(0);
 
   addForm.addEventListener('submit', event => {
     event.preventDefault();
+    if (currentStep < 2) { if (validateStep(currentStep)) showStep(currentStep + 1, true); return; }
+    for (let i = 0; i < steps.length; i++) {
+      showStep(i);
+      if (!validateStep(i)) return;
+    }
     return busy(addButton, async () => {
       picker?.validate();
       const body = Object.fromEntries(new FormData(addForm));
@@ -170,7 +218,7 @@ function createOwnerOnboardingPanel({ api, source = 'website', onChanged, onPick
         else body[key] = Number(body[key]);
       }
       const created = await call('/api/onboarding/new-location', { ...body, source });
-      addForm.reset(); picker?.resetPin(); addDetails.open = false;
+      addForm.reset(); picker?.resetPin(); showStep(0); addDetails.open = false;
       await refresh();
       const done = 'Your sauna is submitted for review. It stays private until we’ve checked it.';
       if (onChanged) await onChanged(created.saunaId, done); else say(done);
@@ -179,11 +227,14 @@ function createOwnerOnboardingPanel({ api, source = 'website', onChanged, onPick
 
   addDetails.append(addForm);
 
+  const existing = el('details', '', 'onboarding-existing');
+  existing.append(el('summary', 'My sauna is already listed'), searchCard);
+
   panel.append(
     el('p', 'YOUR SAUNA ON SEÁNA', 'eyebrow'),
     el('h2', 'Add your sauna'),
-    el('p', 'Claim the listing we already have, or add a location we don’t. Either way a reviewer confirms it before it goes live.', 'muted'),
-    feedback, claims, searchCard, addDetails,
+    el('p', 'Start with your sauna’s details. We’ll guide you through review, payments and your first bookable sessions.', 'muted'),
+    feedback, claims, addDetails, existing,
   );
 
   panel.refresh = refresh;

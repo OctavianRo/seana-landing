@@ -23,3 +23,25 @@ body{font-size:14px;line-height:1.6;letter-spacing:.005em}button,input,select,te
 .application-stages{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));list-style:none;padding:0;margin:28px 0;gap:10px}.application-stage{display:flex;align-items:center;gap:9px;padding:13px 10px;background:#151619;border:1px solid #37383d;border-radius:12px;font-size:12px;color:#b9bbc2}.stage-number{display:grid;place-items:center;width:25px;height:25px;flex-shrink:0;border:1px solid #626570;border-radius:50%;font-size:11px}.application-stage.is-current{border-color:#bc7545;background:#302219;color:#ffcfad}.application-stage.is-complete{color:#f3e6dc}.application-stage.is-complete .stage-number{background:#3b2a1f;color:#ffc193;border-color:#805033}
 .application-next,.application-feedback{padding:16px 18px;background:#131518;border:1px solid #555059;border-radius:12px;color:#f0e5dc;line-height:1.65}.application-feedback h3{font-size:14px;margin:0 0 8px}.application-feedback p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}.application-updated{font-size:12px;color:#bfc0c5;margin:16px 0 0}.setup-steps{margin-top:20px}.setup-step{border-color:#35363c}.setup-step p{line-height:1.6}.owner-setup details summary{cursor:pointer;padding:15px 0;color:#ffbe91;font-weight:600}.owner-setup button{min-height:44px}.owner-setup progress{height:8px;border-radius:8px;overflow:hidden}
 @media(max-width:760px){.sidebar-bottom{position:static;display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;border-top:1px solid #37383d;padding-top:12px}.sidebar-bottom button{padding:8px 10px;min-height:40px}.owner-setup{padding:22px}.application-summary h2{font-size:27px}.application-stages{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.application-stage{padding:12px 9px}.application-description{font-size:14px}.application-updated{line-height:1.6}}
+
+/* Progressive owner onboarding: one focused task at a time. */
+.owner-onboarding { max-width: 880px; }
+.owner-onboarding details > summary, .setup-details > summary { cursor:pointer; padding:18px 0; font-weight:650; }
+.onboarding-step[hidden], .onboarding-controls button[hidden] { display:none!important; }
+.onboarding-step-status { color:var(--orange,#ff9c4a); font-weight:650; margin:24px 0 12px; }
+.onboarding-step { border-top:1px solid #ffffff1c; padding-top:12px; }
+.onboarding-step:focus { outline:none; }
+.onboarding-step label { margin-bottom:18px; }
+.onboarding-step textarea { min-height:108px; }
+.onboarding-controls { display:flex; gap:12px; margin-top:24px; }
+.onboarding-review { display:grid; grid-template-columns:180px 1fr; gap:12px 20px; margin:24px 0; }
+.onboarding-review dt { color:#aaa; }
+.onboarding-review dd { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; }
+.onboarding-existing { margin-top:28px; border-top:1px solid #ffffff1c; }
+@media(max-width:600px) { .onboarding-review { grid-template-columns:1fr; gap:6px; } .onboarding-review dd { margin-bottom:14px; } .onboarding-controls button { flex:1; } }
+.intro > div { min-width:0; overflow-wrap:anywhere; }
+.owner-onboarding .form-grid > label { min-width:0; }
+.owner-setup progress[hidden] { display:none; }
+.onboarding-step input[type=checkbox] { width:18px; height:18px; margin-right:8px; vertical-align:middle; accent-color:var(--accent); }
+.topbar .actions { min-width:0; max-width:100%; }
+@media(max-width:760px) { .topbar .location-picker { width:0; flex:1 1 0; } .topbar .actions > button { flex-shrink:0; } }
