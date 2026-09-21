@@ -115,8 +115,8 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
     <div class="logo">seána</div>
     <p id="denied-title" style="font-size:18px;font-weight:700;margin-bottom:10px"></p>
     <p id="denied-body" style="color:var(--text2);font-size:14px;line-height:1.6;margin-bottom:22px"></p>
-    <button class="act" id="admin-security" style="display:none" onclick="verifyAdminSecurity()">Set up or verify two-factor authentication</button><button class="act" onclick="location.reload()">Try again</button>
-    <button class="act ghost" onclick="signOut()">Use another account</button>
+    <button class="act" id="admin-security" style="display:none" data-admin-action="verify-security">Set up or verify two-factor authentication</button><button class="act" data-admin-action="reload">Try again</button>
+    <button class="act ghost" data-admin-action="signout">Use another account</button>
   </div>
 </div>
 
@@ -125,8 +125,8 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
     <div class="topbar-logo">seána admin</div>
     <div style="display:flex;align-items:center;gap:12px">
       <span class="role" id="who"></span>
-      <button class="act ghost" onclick="window.SeanaOwnerSecurity.openAccount(clerk)">Account security</button>
-      <button class="act ghost" onclick="signOut()">Sign out</button>
+      <button class="act ghost" data-admin-action="account-security">Account security</button>
+      <button class="act ghost" data-admin-action="signout">Sign out</button>
     </div>
   </div>
   <div class="main">
@@ -141,7 +141,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
       <button class="tab" data-view="customers">Customer signups</button>
       <button class="tab" data-view="owners">Owner signups</button>
       <button class="tab" data-view="orgs">Organisations</button>
-      <button class="tab" data-view="security">Security</button>
+      <button class="tab" data-view="security">Security</button><button class="tab" data-view="privacy">Privacy requests</button>
     </div>
     <div id="content"><div class="spin"></div></div>
   </div>
@@ -294,6 +294,7 @@ async function render() {
   try {
     if (view === 'customers' || view === 'owners') return await renderRegistrations();
     if (view === 'changes') return await renderListingChanges();
+    if (view === 'privacy') return await renderPrivacyRequests();
     if (view === 'photos') return await renderPhotos();
     if (view === 'directory') return await renderDirectory();
     if (view === 'claims')   return await renderClaims();
@@ -304,6 +305,37 @@ async function render() {
   } catch (err) {
     $('content').innerHTML = `<p class="empty">Could not load: ${esc(err.message)}</p>`;
   }
+}
+
+document.addEventListener('click', event=>{
+  const button=event.target.closest?.('[data-admin-action]');if(!button||button.disabled)return;
+  const action=button.dataset.adminAction,id=button.dataset.recordId;
+  const actions={'verify-security':()=>verifyAdminSecurity(),reload:()=>location.reload(),signout:()=>signOut(),'account-security':()=>window.SeanaOwnerSecurity.openAccount(clerk),listings:()=>document.querySelector('[data-view=listings]').click(),claims:()=>document.querySelector('[data-view=claims]').click(),refresh:()=>render(),approveClaim:()=>approveClaim(id),rejectClaim:()=>rejectClaim(id),approveListing:()=>approveListing(id),rejectListing:()=>rejectListing(id)};
+  if(Object.hasOwn(actions,action))actions[action]();
+});
+
+async function renderPrivacyRequests(offset=0) {
+  const response=await api('/api/admin/privacy-requests?offset='+offset);
+  if(!response.ok)throw Error(response.body?.error||'Privacy review unavailable');
+  if(view!=='privacy')return;
+  const root=$('content');root.replaceChildren();
+  const text=(tag,value)=>{const el=document.createElement(tag);el.textContent=value;return el;};
+  root.append(text('h2','Privacy requests'),text('p','Record actual actions and retention reasons before completion. This records your review; it does not automatically delete Clerk accounts, processor copies or backups. Never enter passwords, tokens or exported personal data in these notes.'));
+  for(const request of response.body.requests){
+    const card=document.createElement('section');card.className='card';
+    card.append(text('h3',request.kind+' · '+request.subject_email),text('p',request.status+' · Respond by '+new Date(request.response_due).toLocaleDateString('en-IE')));
+    if(request.status==='in_progress'){
+      const form=document.createElement('form'),inputs={};
+      for(const [key,label] of Object.entries({application:'Application records: export, deletion or lawful retention',identity:'Clerk account and sessions',notifications:'Follows, devices and notification records',processors:'Stripe and other providers',backups:'Backup expiry and restoration safeguards',response:'Response to the person and any retained records'})){
+        const field=text('label',label),input=document.createElement('textarea');input.required=true;input.minLength=20;input.maxLength=2000;input.value=request.result?.evidence?.[key]||'';field.append(input);form.append(field);inputs[key]=input;
+      }
+      const save=text('button','Save review notes'),complete=text('button','Record completed request'),notice=text('p','');save.type=complete.type='submit';complete.value='completed';save.value='in_progress';form.append(save,complete,notice);
+      form.onsubmit=async event=>{event.preventDefault();if(save.disabled)return;save.disabled=complete.disabled=true;try{const r=await api('/api/admin/privacy-requests/'+encodeURIComponent(request.id)+'/review',{method:'POST',body:JSON.stringify({status:event.submitter?.value||'in_progress',evidence:Object.fromEntries(Object.entries(inputs).map(([k,v])=>[k,v.value]))})});if(!r.ok)throw Error(r.body?.error||'Could not save');await renderPrivacyRequests(offset);}catch(e){notice.textContent=e.message;}finally{save.disabled=complete.disabled=false;}};
+      card.append(form);
+    }else card.append(text('p','Review recorded. Reference: '+request.id));root.append(card);
+  }
+  if(!response.body.requests.length)root.append(text('p','No verified privacy requests.'));
+  for(const [label,page]of [['Previous',offset?Math.max(0,offset-50):null],['Next',response.body.nextOffset]])if(page!==null){const b=text('button',label);b.onclick=()=>renderPrivacyRequests(page);root.append(b);}
 }
 
 async function renderRegistrations(offset=0) {
@@ -320,7 +352,7 @@ async function renderOnboarding(offset = 0) {
   if (!result.ok) throw new Error(result.body?.error || 'Could not load onboarding');
   if (view !== 'onboarding') return;
   const rows = result.body.organizations;
-  $('content').innerHTML = `<h2>Help owners reach their first booking</h2><p>Oldest unfinished setups appear first. Use the review queues below to accept or reject owner submissions. A saved step is progress, not proof of booking readiness.</p><div class="actions"><button class="act" onclick="document.querySelector('[data-view=listings]').click()">Review new saunas</button><button class="act" onclick="document.querySelector('[data-view=claims]').click()">Review ownership claims</button><button class="act" onclick="render()">Refresh submissions</button></div><label>Filter this page<input id="onboarding-search" type="search" placeholder="Business name or email"></label><div style="overflow:auto"><table><thead><tr><th>Business</th><th>Contact</th><th>Progress / source</th><th>Locations / verified</th><th>Pending claims</th><th>Last setup activity</th></tr></thead><tbody id="onboarding-rows"></tbody></table></div><div id="onboarding-pages"></div>`;
+  $('content').innerHTML = `<h2>Help owners reach their first booking</h2><p>Oldest unfinished setups appear first. Use the review queues below to accept or reject owner submissions. A saved step is progress, not proof of booking readiness.</p><div class="actions"><button class="act" data-admin-action="listings">Review new saunas</button><button class="act" data-admin-action="claims">Review ownership claims</button><button class="act" data-admin-action="refresh">Refresh submissions</button></div><label>Filter this page<input id="onboarding-search" type="search" placeholder="Business name or email"></label><div style="overflow:auto"><table><thead><tr><th>Business</th><th>Contact</th><th>Progress / source</th><th>Locations / verified</th><th>Pending claims</th><th>Last setup activity</th></tr></thead><tbody id="onboarding-rows"></tbody></table></div><div id="onboarding-pages"></div>`;
   const draw = () => { const q = $('onboarding-search').value.toLowerCase(); $('onboarding-rows').innerHTML = rows.filter(o => `${o.name} ${o.billing_email}`.toLowerCase().includes(q)).map(o => `<tr><td>${esc(o.name)}<br>${esc(o.status)}</td><td>${esc(o.billing_email || '—')}</td><td>${esc(o.completed_at ? 'Setup completed' : o.step)}<br>${esc(o.source)}</td><td>${esc(o.locations)} / ${esc(o.verified_locations)}</td><td>${esc(o.pending_claims)}</td><td>${esc(new Date(o.updated_at || o.created_at).toLocaleDateString('en-IE'))}</td></tr>`).join('') || '<tr><td colspan="6">No matching businesses</td></tr>'; }; $('onboarding-search').addEventListener('input', draw); draw();
   for (const [label, next] of [['Previous', offset > 0 ? Math.max(0, offset - 100) : null], ['Next', result.body.nextOffset]]) { if (next === null) continue; const b = document.createElement('button'); b.textContent = label; b.onclick = () => renderOnboarding(next).catch(e => { $('content').textContent = e.message; }); $('onboarding-pages').append(b); }
 }
@@ -409,8 +441,8 @@ async function renderClaims() {
           <span class="pill p-pending">${esc(c.status)}</span>
         </div>
         <div class="actions">
-          <button class="act ap" onclick="approveClaim('${esc(c.id)}')" ${canAct ? '' : 'disabled'}>Approve</button>
-          <button class="act rj" onclick="rejectClaim('${esc(c.id)}')" ${canAct ? '' : 'disabled'}>Reject</button>
+          <button class="act ap" data-admin-action="approveClaim" data-record-id="${esc(c.id)}" ${canAct ? '' : 'disabled'}>Approve</button>
+          <button class="act rj" data-admin-action="rejectClaim" data-record-id="${esc(c.id)}" ${canAct ? '' : 'disabled'}>Reject</button>
           ${canAct ? '' : '<span style="color:var(--text3);font-size:12px;align-self:center">Requires the admin role</span>'}
         </div>
       </div>
@@ -474,8 +506,8 @@ async function renderListings() {
           <label><input type="checkbox" id="owner-${esc(l.listingId)}"> I verified that the submitter is authorised to manage it.</label>
           <p class="row-meta">${d.reviewNotificationSentAt ? 'Review notification sent' : 'Review notification queued — email configuration and background worker required'}</p>
           <div class="actions">
-            <button class="act ap" onclick="approveListing('${esc(l.listingId)}')" ${canAct ? '' : 'disabled'}>Approve sauna</button>
-            <button class="act rj" onclick="rejectListing('${esc(l.listingId)}')" ${canAct ? '' : 'disabled'}>Reject</button>
+            <button class="act ap" data-admin-action="approveListing" data-record-id="${esc(l.listingId)}" ${canAct ? '' : 'disabled'}>Approve sauna</button>
+            <button class="act rj" data-admin-action="rejectListing" data-record-id="${esc(l.listingId)}" ${canAct ? '' : 'disabled'}>Reject</button>
           </div>` : ''}
       </div>`;
   }).join('');
