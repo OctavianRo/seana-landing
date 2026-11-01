@@ -8,7 +8,7 @@ function policy(html=''){
 function createPortal(root){
  const app=express(),policies=new Map();app.disable('x-powered-by');
  app.use((_req,res,next)=>{res.set({'X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Referrer-Policy':'no-referrer','Strict-Transport-Security':'max-age=31536000','Cross-Origin-Opener-Policy':'same-origin-allow-popups','Permissions-Policy':'camera=(), microphone=(), geolocation=(self), payment=(self "https://js.stripe.com")','Content-Security-Policy':policy(),'Cache-Control':'no-store'});next();});
- app.get('/healthz',(_req,res)=>res.json({ready:fs.existsSync(path.join(root,'portal/dashboard.html'))}));
+ app.get('/healthz',(_req,res)=>{const ready=fs.existsSync(path.join(root,'portal/dashboard.html'));res.status(ready?200:503).json({ready});});
  app.get('/',(_req,res)=>res.redirect(302,'/portal/dashboard.html'));
  app.get('/robots.txt',(_req,res)=>res.type('text').send('User-agent: *\nDisallow: /\n'));
  app.get('/portal/secure-origin.js',(_req,res)=>res.type('js').send("window.SeanaPortalCanonicalOrigin="+JSON.stringify(ORIGIN)+";\n"+fs.readFileSync(path.join(root,'portal/secure-origin.js'),'utf8')));
